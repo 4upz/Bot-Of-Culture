@@ -32,7 +32,7 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
   try {
     const serverReviews = await getReviewsForType(resultType, id, guildId, bot)
 
-    const averageScore = calculateAverageScore(serverReviews)
+    const averageScore = calculatePropertyAverage(serverReviews, 'score')
     const scoreDisplay = serverReviews.length
       ? convertScoreToStars(averageScore, serverReviews.length, resultType)
       : '*Not yet reviewed*'
@@ -123,6 +123,17 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
     resultInfoEmbed = resultInfoEmbed.addFields([
       { name: 'Server Score', value: scoreDisplay, inline: true },
     ])
+    if (resultType === 'game')
+      resultInfoEmbed = resultInfoEmbed.addFields([
+        {
+          name: 'Avg Hours Played',
+          value: calculatePropertyAverage(
+            serverReviews,
+            'hoursPlayed',
+          ).toString(),
+          inline: true,
+        },
+      ])
 
     const actionRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -178,9 +189,12 @@ async function getReviewsForType(
   })
 }
 
-function calculateAverageScore(reviews: IReview[]) {
+function calculatePropertyAverage(
+  reviews: IReview[],
+  property: 'hoursPlayed' | 'score',
+) {
   const rawAverage =
-    reviews.reduce((total: number, review) => total + review.score, 0) /
+    reviews.reduce((total: number, review) => total + review[property], 0) /
     reviews.length
   return Math.floor(rawAverage)
 }

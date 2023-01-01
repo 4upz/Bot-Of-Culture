@@ -56,6 +56,12 @@ export default class GameService extends Service {
     const results: any[] = await this.fetchRequest(request)
     const game = results[0]
 
+    const developer = game.involved_companies.find(
+      (company: any) => company.developer,
+    )
+    const publisher = game.involved_companies.find(
+      (company: any) => company.publisher,
+    )
     return {
       id: game.id,
       title: game.name,
@@ -66,12 +72,8 @@ export default class GameService extends Service {
       date: game?.release_dates[0]?.y?.toString(),
       // game modes + multiplayer modes will be used to show game modes and player count for matching multiplayer mode
       gameModes: game.game_modes,
-      developer: game.involved_companies.find(
-        (company: any) => company.developer,
-      ).company.name,
-      publisher: game.involved_companies.find(
-        (company: any) => company.publisher,
-      ).company.name,
+      developer: developer?.company.name || 'N/A',
+      publisher: publisher?.company.name || 'N/A',
       genres: game.genres,
       rating: Math.floor(game.aggregated_rating),
       ratingCount: game.aggregated_rating_count,

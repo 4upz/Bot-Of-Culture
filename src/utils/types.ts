@@ -37,6 +37,7 @@ export interface IReview {
   userId: string
   username: string
   createdAt: Date
+  hoursPlayed?: number
 }
 
 export interface SearchResult {

@@ -159,6 +159,20 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
     .setTitle('Review Comment')
     .addComponents(actionRow)
 
+  if (type === 'game')
+    // Add option for hours input
+    modal.addComponents(
+      new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('reviewHoursInput')
+          .setLabel('How many hours did you play? (optional)')
+          .setMaxLength(3)
+          .setPlaceholder('20')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false),
+      ),
+    )
+
   await interaction.showModal(modal)
   await interaction.deleteReply()
 }
@@ -166,23 +180,27 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
 export async function saveReview(
   interaction: SelectMenuInteraction | ModalSubmitInteraction,
 ) {
-  let reviewComment
+  let comment, hoursPlayed
   const params = interaction.customId.split('_')
   const type = params[1]
   const bot = interaction.client as BotClient
 
   await interaction.deferReply({ ephemeral: true })
 
-  if (interaction.isModalSubmit())
-    reviewComment = interaction.fields.getTextInputValue('reviewCommentInput')
+  if (interaction.isModalSubmit()) {
+    comment = interaction.fields.getTextInputValue('reviewCommentInput')
+    hoursPlayed = interaction.fields.getTextInputValue('reviewHoursInput')
+  }
 
   const data: { [key: string]: string | number } = {
     userId: interaction.user.id,
     username: interaction.user.username,
     guildId: interaction.guildId,
     score: parseInt(params[4]),
-    comment: reviewComment,
+    hoursPlayed: parseInt(hoursPlayed) || 0,
+    comment,
   }
+
   // Assign ID key by asserting from type
   data[`${type}Id`] = params[3]
   try {
@@ -214,7 +232,7 @@ export async function saveReview(
       reviewTarget = await bot.movies.getSeriesById(data.seriesId.toString())
     }
 
-    if (!reviewComment) review.comment = '*No comment added*'
+    if (!comment) review.comment = '*No comment added*'
 
     const reviewInfoEmbed = createReviewEmbed(
       review,
@@ -308,7 +326,7 @@ export function createReviewEmbed(
   type: string,
 ) {
   const formattedScore = `${convertScoreToStars(review.score, undefined, type)}`
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor('#01b4e4')
     .setTitle(`*"${reviewTarget.title}"* review by ${review.username}`)
     .setAuthor({
@@ -317,19 +335,30 @@ export function createReviewEmbed(
     })
     .setDescription(review.comment)
     .setImage(reviewTarget.image)
-    .addFields([
-      { name: 'Score', value: formattedScore },
+
+  if (type === 'game')
+    embed.addFields([
       {
-        name: 'Release Date',
-        value: toNormalDate(reviewTarget.date),
-        inline: true,
-      },
-      {
-        name: 'Description',
-        value: reviewTarget.description,
+        name: 'Hours Played',
+        value: (<GameReview>review).hoursPlayed?.toString() || 'N/A',
         inline: true,
       },
     ])
+
+  embed.addFields([
+    { name: 'Score', value: formattedScore },
+    {
+      name: 'Release Date',
+      value: toNormalDate(reviewTarget.date),
+      inline: true,
+    },
+    {
+      name: 'Description',
+      value: reviewTarget.description,
+      inline: true,
+    },
+  ])
+  return embed
 }
 
 export function convertToNameListString(objectArr: any[]) {
