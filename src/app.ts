@@ -1,4 +1,4 @@
-import { Collection, GatewayIntentBits } from 'discord.js'
+import { ActivityType, Collection, GatewayIntentBits } from 'discord.js'
 import dotenv from 'dotenv'
 import { loadCommands } from './utils/loadCommands'
 import { loadEvents } from './utils/loadEvents'
@@ -16,6 +16,9 @@ loadCommands(bot).then(async () => {
   await bot.initDatabase()
   await bot.initServices()
   await bot.login(token)
+  bot.user.setActivity('with your emotions :)', {
+    type: ActivityType.Playing,
+  })
 })
 
 process.once('exit', async () => {
