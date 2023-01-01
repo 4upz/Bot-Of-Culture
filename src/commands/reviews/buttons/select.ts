@@ -6,11 +6,11 @@ import {
   MessageComponentInteraction,
 } from 'discord.js'
 import { BotClient } from 'src/Bot'
-import { convertScoreToStars } from '../utils'
+import { convertScoreToStars, convertToNameListString } from '../utils'
 import {
-  IMovieReview,
+  GameSearchResult,
   IReview,
-  ISeriesReview,
+  ReviewType,
   SeriesSearchResult,
 } from '../../../utils/types'
 import { toNormalDate } from '../../../utils/helpers'
@@ -30,19 +30,11 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
   await interaction.deferUpdate()
 
   try {
-    let serverReviews: IReview[]
-    if (resultType === 'movie')
-      serverReviews = (await bot.db.movieReview.findMany({
-        where: { movieId: id, guildId },
-      })) as IMovieReview[]
-    else
-      serverReviews = (await bot.db.seriesReview.findMany({
-        where: { seriesId: id, guildId },
-      })) as ISeriesReview[]
+    const serverReviews = await getReviewsForType(resultType, id, guildId, bot)
 
     const averageScore = calculateAverageScore(serverReviews)
     const scoreDisplay = serverReviews.length
-      ? convertScoreToStars(averageScore, serverReviews.length)
+      ? convertScoreToStars(averageScore, serverReviews.length, resultType)
       : '*Not yet reviewed*'
 
     const result = await getByIdForType(resultType, id, bot)
@@ -65,6 +57,7 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
       commandPrefix = 'startReview_series'
       const { episodes, episodeLength, seasons, lastAirDate, status } =
         result as SeriesSearchResult
+
       resultInfoEmbed = resultInfoEmbed.addFields([
         { name: 'Episodes', value: episodes, inline: true },
         {
@@ -79,6 +72,51 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
           inline: true,
         },
         { name: 'Status', value: status, inline: true },
+      ])
+    }
+
+    if (resultType === 'game') {
+      commandPrefix = 'startReview_game'
+      const {
+        gameModes,
+        developer,
+        publisher,
+        genres,
+        rating,
+        ratingCount,
+        platforms,
+      } = result as GameSearchResult
+
+      resultInfoEmbed = resultInfoEmbed.addFields([
+        {
+          name: 'Genres',
+          value: convertToNameListString(genres),
+          inline: true,
+        },
+        {
+          name: 'Modes',
+          value: convertToNameListString(gameModes),
+          inline: true,
+        },
+        {
+          name: 'Developer',
+          value: developer,
+          inline: true,
+        },
+        {
+          name: 'Publisher',
+          value: publisher,
+          inline: true,
+        },
+        {
+          name: 'Rating',
+          value: rating ? `${rating} (*${ratingCount}*)` : 'N/A',
+          inline: true,
+        },
+        {
+          name: 'Platforms',
+          value: convertToNameListString(platforms),
+        },
       ])
     }
 
@@ -121,7 +159,23 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
 
 async function getByIdForType(type: string, id: string, bot: BotClient) {
   if (type === 'movie') return await bot.movies.getById(id)
+  else if (type == 'game') return await bot.games.getById(id)
   else return await bot.movies.getSeriesById(id)
+}
+
+async function getReviewsForType(
+  type: string,
+  id: string,
+  guildId: string,
+  bot: BotClient,
+): Promise<IReview[]> {
+  const collection = bot.getCollection(type as ReviewType)
+  return await collection.findMany({
+    where: {
+      [`${type}Id`]: id,
+      guildId,
+    },
+  })
 }
 
 function calculateAverageScore(reviews: IReview[]) {
@@ -137,9 +191,8 @@ function createReviewPromptMessage(
 ): string | void {
   if (!reviews.some((review) => review.userId === userId))
     if (!reviews.length)
-      return 'Looks like no one has reviewed this movie. Make everyone jealous by being the first one to review it!'
-    else
-      return 'Have you seen this movie before? Leave a review above and share your thoughts with the server!'
+      return 'Looks like no one has reviewed this yet. Make everyone jealous by being the first one to review it!'
+    else return 'Join others in the server by leaving a review!'
 }
 
 export default command

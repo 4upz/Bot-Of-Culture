@@ -27,6 +27,17 @@ const command = {
             .setDescription('The title of the series you wish to review')
             .setRequired(true),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('game')
+        .setDescription('Review a game')
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('The title of the game you wish to review')
+            .setRequired(true),
+        ),
     ),
   execute: (interaction: ChatInputCommandInteraction) =>
     handleSubcommand(interaction, subcommandExecutors),
@@ -35,13 +46,20 @@ const command = {
 const subcommandExecutors = {
   movie: startMovieReview,
   series: startSeriesReview,
+  game: startGameReview,
 }
 
 async function startMovieReview(interaction: ChatInputCommandInteraction) {
   const commandPrefix = 'startReview_movie'
   const additionalMessage =
     '*If already reviewed, you will be updating your previous score.*'
-  await replyWithResults(interaction, commandPrefix, additionalMessage, true)
+  await replyWithResults(
+    interaction,
+    commandPrefix,
+    additionalMessage,
+    true,
+    'movie',
+  )
 }
 
 async function startSeriesReview(interaction: ChatInputCommandInteraction) {
@@ -53,7 +71,20 @@ async function startSeriesReview(interaction: ChatInputCommandInteraction) {
     commandPrefix,
     additionalMessage,
     true,
+    'series',
+  )
+}
+
+async function startGameReview(interaction: ChatInputCommandInteraction) {
+  const commandPrefix = 'startReview_game'
+  const additionalMessage =
+    '*If already reviewed, you will be updating your previous score.*'
+  await replyWithResults(
+    interaction,
+    commandPrefix,
+    additionalMessage,
     true,
+    'game',
   )
 }
 

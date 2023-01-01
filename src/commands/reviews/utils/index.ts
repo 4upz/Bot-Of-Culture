@@ -15,10 +15,10 @@ import {
   TextInputStyle,
 } from 'discord.js'
 import dayjs from 'dayjs'
-import { MovieReview, Prisma, SeriesReview } from '@prisma/client'
-import { reviewChoices } from '../../utils/choices'
+import { GameReview, MovieReview, Prisma, SeriesReview } from '@prisma/client'
+import { gameReviewChoices, reviewChoices } from '../../utils/choices'
 import { BotClient } from '../../../Bot'
-import { SearchResult } from '../../../utils/types'
+import { ReviewType, SearchResult } from '../../../utils/types'
 import { toNormalDate } from '../../../utils/helpers'
 
 type ReviewCreateResult = {
@@ -80,16 +80,54 @@ async function saveSeriesReview(
   }
 }
 
+async function saveGameReview(
+  data: Prisma.GameReviewCreateInput,
+  bot: BotClient,
+) {
+  let review = await bot.db.gameReview.findFirst({
+    where: {
+      userId: data.userId,
+      gameId: data.gameId,
+      guildId: data.guildId,
+    },
+  })
+
+  if (review) {
+    review = await bot.db.gameReview.update({
+      where: { id: review.id },
+      data,
+    })
+    return { review, message: 'Review successfully updated!' }
+  } else {
+    review = await bot.db.gameReview.create({ data })
+    return {
+      review: review as GameReview,
+      message: 'Review successfully added! 🎉',
+    }
+  }
+}
+
+async function getSearchResultsForType(
+  type: ReviewType,
+  query: string,
+  bot: BotClient,
+) {
+  if (type === 'movie') return await bot.movies.search(query)
+  else if (type === 'series') return await bot.movies.searchSeries(query)
+  else return await bot.games.search(query)
+}
+
 export async function promptReview(interaction: MessageComponentInteraction) {
   const params = interaction.customId.split('_')
   const targetId = params[3]
   const type = params[1]
 
   try {
+    const choices = type === 'game' ? gameReviewChoices : reviewChoices
     const actionRow = new ActionRowBuilder().addComponents(
       new SelectMenuBuilder()
         .setCustomId(`reviewScore_${type}_button_${targetId}`)
-        .addOptions(...(reviewChoices as any)),
+        .addOptions(...(choices as any)),
     )
     await interaction.update({
       content: `Awesome! What would you rate this ${type}? 🤔`,
@@ -158,6 +196,14 @@ export async function saveReview(
       review = result.review
       statusReply = result.message
       reviewTarget = await bot.movies.getById(data.movieId.toString())
+    } else if (type === 'game') {
+      const result = await saveGameReview(
+        data as Prisma.GameReviewCreateInput,
+        bot,
+      )
+      review = result.review
+      statusReply = result.message
+      reviewTarget = await bot.games.getById(data.gameId.toString())
     } else {
       const result = await saveSeriesReview(
         data as Prisma.SeriesReviewCreateInput,
@@ -174,6 +220,7 @@ export async function saveReview(
       review,
       reviewTarget,
       interaction.user.avatarURL(),
+      type,
     )
 
     await interaction.channel.send({
@@ -196,14 +243,11 @@ export async function replyWithResults(
   customIdPrefix: string,
   additionalMessage: string,
   isEphemeral: boolean,
-  isSeries?: boolean,
+  type: ReviewType,
 ) {
   const bot = interaction.client as BotClient
   const query = interaction.options.getString('title')
-
-  const results = isSeries
-    ? await bot.movies.searchSeries(query)
-    : await bot.movies.search(query)
+  const results = await getSearchResultsForType(type, query, bot)
 
   if (results.length) {
     const actionRow: ActionRowBuilder<AnyComponentBuilder> =
@@ -212,7 +256,7 @@ export async function replyWithResults(
           let { title, date } = result
           if (title.length > 73) title = `${title.substring(0, 69)}...`
 
-          date = dayjs(date).format('YYYY')
+          date = date ? dayjs(date).format('YYYY') : 'Date N/A'
           return new ButtonBuilder()
             .setCustomId(`${customIdPrefix}_button_${result.id}`)
             .setLabel(`${title} (${date})`)
@@ -221,10 +265,15 @@ export async function replyWithResults(
       )
 
     const comment = additionalMessage || ''
-    const emoji = isSeries ? '📺' : '🎬'
+    const emoji = {
+      movie: '🎬',
+      series: '📺',
+      game: '🎮',
+    }
     await interaction.reply({
       content:
-        `Please select a result or try another search. ${emoji}\n ` + comment,
+        `Please select a result or try another search. ${emoji[type]}\n ` +
+        comment,
       components: [actionRow as any],
       ephemeral: isEphemeral,
     })
@@ -237,22 +286,28 @@ export async function replyWithResults(
   }
 }
 
-export function convertScoreToStars(score: number, count?: number) {
+export function convertScoreToStars(
+  score: number,
+  count?: number,
+  type?: string,
+) {
   const suffix = count ? ` (${count})` : ''
+  const choices = type === 'game' ? gameReviewChoices : reviewChoices
   return (
     '⭐️'.repeat(score) +
     '▪️'.repeat(5 - score) +
-    ` | *${reviewChoices[score - 1].description}*` +
+    ` | *${choices[score - 1].description}*` +
     suffix
   )
 }
 
 export function createReviewEmbed(
-  review: MovieReview | SeriesReview,
+  review: MovieReview | SeriesReview | GameReview,
   reviewTarget: SearchResult,
   avatar: string,
+  type: string,
 ) {
-  const formattedScore = `${convertScoreToStars(review.score)}`
+  const formattedScore = `${convertScoreToStars(review.score, undefined, type)}`
   return new EmbedBuilder()
     .setColor('#01b4e4')
     .setTitle(`*"${reviewTarget.title}"* review by ${review.username}`)
@@ -275,4 +330,9 @@ export function createReviewEmbed(
         inline: true,
       },
     ])
+}
+
+export function convertToNameListString(objectArr: any[]) {
+  if (objectArr?.length) return objectArr.map((obj: any) => obj.name).join(', ')
+  return 'N/A'
 }

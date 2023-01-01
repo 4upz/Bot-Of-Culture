@@ -22,6 +22,10 @@ async function getMovieReview(interaction: MessageComponentInteraction) {
     review = await bot.db.movieReview.findFirst({
       where: { guildId, movieId: targetId, userId },
     })
+  else if (type === 'game')
+    review = await bot.db.gameReview.findFirst({
+      where: { guildId, gameId: targetId, userId },
+    })
   else
     review = await bot.db.seriesReview.findFirst({
       where: { guildId, seriesId: targetId, userId },
@@ -30,12 +34,13 @@ async function getMovieReview(interaction: MessageComponentInteraction) {
   if (review) {
     let targetInfo
     if (type === 'movie') targetInfo = await bot.movies.getById(targetId)
+    else if (type === 'game') targetInfo = await bot.games.getById(targetId)
     else targetInfo = await bot.movies.getSeriesById(targetId)
     const userAvatar = bot.guilds
       .resolve(guildId)
       .members.resolve(userId)
       .user.avatarURL()
-    const reviewEmbed = createReviewEmbed(review, targetInfo, userAvatar)
+    const reviewEmbed = createReviewEmbed(review, targetInfo, userAvatar, type)
     interaction.channel.send({
       content: `Review requested by <@${interaction.user.id}>`,
       embeds: [reviewEmbed as any],

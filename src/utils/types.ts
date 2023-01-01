@@ -5,7 +5,12 @@ import {
   SlashCommandSubcommandsOnlyBuilder,
 } from 'discord.js'
 
-export type CollectionName = 'movie' | 'series'
+type GameMode = {
+  name: string
+  id: number
+}
+
+export type ReviewType = 'movie' | 'series' | 'game'
 
 export interface ActiveGame {
   id: string
@@ -34,14 +39,6 @@ export interface IReview {
   createdAt: Date
 }
 
-export interface IMovieReview extends IReview {
-  movieId: string
-}
-
-export interface ISeriesReview extends IReview {
-  seriesId: string
-}
-
 export interface SearchResult {
   id: string
   title: string
@@ -56,4 +53,14 @@ export interface SeriesSearchResult extends SearchResult {
   episodeLength: string
   seasons: string
   status: string
+}
+
+export interface GameSearchResult extends SearchResult {
+  platforms: any[]
+  genres: string[]
+  rating: number
+  ratingCount: number
+  gameModes: GameMode[]
+  developer: string
+  publisher: string
 }

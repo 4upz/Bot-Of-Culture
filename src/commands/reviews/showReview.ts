@@ -39,6 +39,22 @@ const commands = {
             .setName('reviewer')
             .setDescription('The user that created the review.'),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('game')
+        .setDescription('Show a review for a game')
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('The title of the game you wish to see.')
+            .setRequired(true),
+        )
+        .addUserOption((option) =>
+          option
+            .setName('reviewer')
+            .setDescription('The user that created the review.'),
+        ),
     ),
 
   execute: (interaction: ChatInputCommandInteraction) =>
@@ -48,12 +64,19 @@ const commands = {
 const subcommandExecutors = {
   movie: searchMovieReview,
   series: searchSeriesReview,
+  game: searchGameReview,
 }
 
 async function searchMovieReview(interaction: ChatInputCommandInteraction) {
   const user =
     interaction.options.getUser('reviewer')?.id ?? interaction.user.id
-  await replyWithResults(interaction, `searchReview_movie_${user}`, '', true)
+  await replyWithResults(
+    interaction,
+    `searchReview_movie_${user}`,
+    '',
+    true,
+    'movie',
+  )
 }
 
 async function searchSeriesReview(interaction: ChatInputCommandInteraction) {
@@ -64,7 +87,19 @@ async function searchSeriesReview(interaction: ChatInputCommandInteraction) {
     `searchReview_series_${user}`,
     '',
     true,
+    'series',
+  )
+}
+
+async function searchGameReview(interaction: ChatInputCommandInteraction) {
+  const user =
+    interaction.options.getUser('reviewer')?.id ?? interaction.user.id
+  await replyWithResults(
+    interaction,
+    `searchReview_game_${user}`,
+    '',
     true,
+    'game',
   )
 }
 

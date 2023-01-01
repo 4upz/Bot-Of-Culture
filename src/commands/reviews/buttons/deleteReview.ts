@@ -1,6 +1,6 @@
 import { MessageComponentInteraction } from 'discord.js'
 import { BotClient } from '../../../Bot'
-import { CollectionName } from '../../../utils/types'
+import { ReviewType } from '../../../utils/types'
 
 const command = {
   data: {
@@ -19,7 +19,7 @@ async function handleDeleteReview(interaction: MessageComponentInteraction) {
   await interaction.deferUpdate()
 
   try {
-    const collection = client.getCollection(type as CollectionName)
+    const collection = client.getCollection(type as ReviewType)
     if (!collection) throw new Error('Invalid collection name')
     // Grab id of review document if it exists
     const review = await (<any>collection).findFirst({

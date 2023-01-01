@@ -11,9 +11,12 @@ const bot: BotClient = new BotClient({ intents: [GatewayIntentBits.Guilds] })
 // Attach command collection to bot so that it can be accessed anywhere
 bot.commands = new Collection()
 
-loadCommands(bot)
-    .then(() => loadEvents(bot))
-    .then(() => bot.login(token))
+loadCommands(bot).then(async () => {
+  await loadEvents(bot)
+  await bot.initDatabase()
+  await bot.initServices()
+  await bot.login(token)
+})
 
 process.once('exit', async () => {
   await bot.db.$disconnect()

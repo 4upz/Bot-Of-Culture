@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
 import { replyWithResults } from './utils'
+import { ReviewType } from '../../utils/types'
 
 const command = {
   data: new SlashCommandBuilder()
@@ -26,15 +27,25 @@ const command = {
             .setDescription('The title of the series you reviewed')
             .setRequired(true),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('game')
+        .setDescription('Delete review for a game')
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('The title of the game you reviewed')
+            .setRequired(true),
+        ),
     ),
   execute: handleDeleteReview,
 }
 
 async function handleDeleteReview(interaction: ChatInputCommandInteraction) {
-  const type = interaction.options.getSubcommand()
-  const isSeries = type === 'series'
+  const type = interaction.options.getSubcommand() as ReviewType
   const commandPrefix = `deleteReview_${type}`
-  await replyWithResults(interaction, commandPrefix, '', true, isSeries)
+  await replyWithResults(interaction, commandPrefix, '', true, type)
 }
 
 export default command
