@@ -35,7 +35,7 @@ async function reviewScore(interaction: SelectMenuInteraction) {
 
   await interaction.update({
     content:
-      'Thanks for the rating! Would you like to leave a comment explaining your score?',
+      'Thanks for the rating! Would you like to leave a comment or additional information explaining your score?',
     components: [actionRow as any],
   })
 }
