@@ -38,12 +38,13 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
       : '*Not yet reviewed*'
 
     const result = await getByIdForType(resultType, id, bot)
+    const description = truncateByMaxLength(result.description, 1024)
 
     let commandPrefix = 'startReview_movie'
     let resultInfoEmbed = new EmbedBuilder()
       .setColor('#01b4e4')
       .setTitle(result.title)
-      .setDescription(result.description)
+      .setDescription(description)
       .setImage(result.image)
       .addFields([
         {
@@ -123,17 +124,16 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
     resultInfoEmbed = resultInfoEmbed.addFields([
       { name: 'Server Score', value: scoreDisplay, inline: true },
     ])
-    if (resultType === 'game')
+    if (resultType === 'game') {
+      const avgHours = calculatePropertyAverage(serverReviews, 'hoursPlayed')
       resultInfoEmbed = resultInfoEmbed.addFields([
         {
           name: 'Avg Hours Played',
-          value: calculatePropertyAverage(
-            serverReviews,
-            'hoursPlayed',
-          ).toString(),
+          value: avgHours ? avgHours.toString() : '*Not yet provided*',
           inline: true,
         },
       ])
+    }
 
     const actionRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -207,6 +207,13 @@ function createReviewPromptMessage(
     if (!reviews.length)
       return 'Looks like no one has reviewed this yet. Make everyone jealous by being the first one to review it!'
     else return 'Join others in the server by leaving a review!'
+}
+
+function truncateByMaxLength(description: string, maxLength: number) {
+  if (description.length > maxLength)
+    return description.substring(0, maxLength - 3) + '...'
+
+  return description
 }
 
 export default command

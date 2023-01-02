@@ -56,12 +56,12 @@ export default class GameService extends Service {
     const results: any[] = await this.fetchRequest(request)
     const game = results[0]
 
-    const developer = game.involved_companies.find(
-      (company: any) => company.developer,
-    )
-    const publisher = game.involved_companies.find(
-      (company: any) => company.publisher,
-    )
+    const developer = game.involved_companies
+      ? game.involved_companies.find((company: any) => company.developer)
+      : 'N/A'
+    const publisher = game.involved_companies
+      ? game.involved_companies.find((company: any) => company.publisher)
+      : 'N/A'
     return {
       id: game.id,
       title: game.name,
@@ -94,7 +94,7 @@ export default class GameService extends Service {
     let requestBody = query + fields
     if (query.includes('search')) {
       // Exclude expansions, dlc, and special editions
-      const filter = 'where category = 0 & version_title = null;'
+      const filter = 'where category = (0, 8, 10) & version_title = null;'
       const limit = 'limit 5;\n'
       requestBody += filter + limit
     }
