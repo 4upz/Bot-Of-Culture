@@ -180,29 +180,33 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
 export async function saveReview(
   interaction: SelectMenuInteraction | ModalSubmitInteraction,
 ) {
-  let comment, hoursPlayed
+  let comment
   const params = interaction.customId.split('_')
   const type = params[1]
   const bot = interaction.client as BotClient
 
   await interaction.deferReply({ ephemeral: true })
 
-  if (interaction.isModalSubmit()) {
+  if (interaction.isModalSubmit())
     comment = interaction.fields.getTextInputValue('reviewCommentInput')
-    hoursPlayed = interaction.fields.getTextInputValue('reviewHoursInput')
-  }
 
   const data: { [key: string]: string | number } = {
     userId: interaction.user.id,
     username: interaction.user.username,
     guildId: interaction.guildId,
     score: parseInt(params[4]),
-    hoursPlayed: parseInt(hoursPlayed) || 0,
     comment,
   }
 
   // Assign ID key by asserting from type
   data[`${type}Id`] = params[3]
+
+  // Assign optional hours input for game reviews
+  if (type === 'game' && interaction.isModalSubmit()) {
+    const hoursPlayed = interaction.fields.getTextInputValue('reviewHoursInput')
+    data.hoursPlayed = parseInt(hoursPlayed) || 0
+  }
+
   try {
     let reviewTarget, review, statusReply
 
