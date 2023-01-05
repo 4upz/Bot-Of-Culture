@@ -6,7 +6,11 @@ import {
   MessageComponentInteraction,
 } from 'discord.js'
 import { BotClient } from 'src/Bot'
-import { convertScoreToStars, convertToNameListString } from '../utils'
+import {
+  convertScoreToStars,
+  convertToNameListString,
+  truncateByMaxLength,
+} from '../utils'
 import {
   GameSearchResult,
   IReview,
@@ -38,7 +42,7 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
       : '*Not yet reviewed*'
 
     const result = await getByIdForType(resultType, id, bot)
-    const description = truncateByMaxLength(result.description, 1024)
+    const description = truncateByMaxLength(result.description, 4096)
 
     let commandPrefix = 'startReview_movie'
     let resultInfoEmbed = new EmbedBuilder()
@@ -207,13 +211,6 @@ function createReviewPromptMessage(
     if (!reviews.length)
       return 'Looks like no one has reviewed this yet. Make everyone jealous by being the first one to review it!'
     else return 'Join others in the server by leaving a review!'
-}
-
-function truncateByMaxLength(description: string, maxLength: number) {
-  if (description.length > maxLength)
-    return description.substring(0, maxLength - 3) + '...'
-
-  return description
 }
 
 export default command

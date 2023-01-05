@@ -330,6 +330,7 @@ export function createReviewEmbed(
   type: string,
 ) {
   const formattedScore = `${convertScoreToStars(review.score, undefined, type)}`
+  const description = truncateByMaxLength(reviewTarget.description, 1024)
   const embed = new EmbedBuilder()
     .setColor('#01b4e4')
     .setTitle(`*"${reviewTarget.title}"* review by ${review.username}`)
@@ -358,7 +359,7 @@ export function createReviewEmbed(
     },
     {
       name: 'Description',
-      value: reviewTarget.description,
+      value: description,
       inline: true,
     },
   ])
@@ -368,4 +369,10 @@ export function createReviewEmbed(
 export function convertToNameListString(objectArr: any[]) {
   if (objectArr?.length) return objectArr.map((obj: any) => obj.name).join(', ')
   return 'N/A'
+}
+
+export function truncateByMaxLength(description: string, maxLength: number) {
+  if (description.length > maxLength)
+    return description.substring(0, maxLength - 3) + '...'
+  return description
 }
