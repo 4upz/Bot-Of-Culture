@@ -94,7 +94,7 @@ export default class GameService extends Service {
     let requestBody = query + fields
     if (query.includes('search')) {
       // Exclude expansions, dlc, and special editions
-      const filter = 'where category = (0, 8, 10) & version_title = null;'
+      const filter = 'where category = (0, 4, 8, 10) & version_title = null;'
       const limit = 'limit 5;\n'
       requestBody += filter + limit
     }
