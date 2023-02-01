@@ -4,7 +4,7 @@ Discord Bot curated for the Men of Culture Discord Server using Discord.JS
 
 ## Installation Requirements
 If you want to run your own version of Bot of Culture locally, it's a fairly straightforward process. It requires that you set up its 4 main dependencies:
-- Node.js >= 16 (tip: use nvm or n to manage multiple Node versions)
+- [Node.js](https://nodejs.org/en/) >= 16 (tip: use nvm or n to manage multiple Node versions)
 - A [Discord App](https://discord.com/developers/docs/getting-started) with API credentials
 - A [MongoDb](https://www.mongodb.com/atlas/database) Instance for Prisma to use
 - Access keys to the Movie and TV APIs
