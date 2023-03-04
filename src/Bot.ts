@@ -3,12 +3,14 @@ import { Client, ClientOptions, Collection } from 'discord.js'
 import MovieService from './services/MovieService'
 import { ReviewType, SlashCommand } from './utils/types'
 import GameService from './services/GameService'
+import MusicService from './services/MusicService'
 
 export class BotClient extends Client {
   public commands: Collection<string, SlashCommand>
   public db: PrismaClient
   public movies: MovieService
   public games: GameService
+  public music: MusicService
 
   constructor(options: ClientOptions) {
     super(options)
@@ -32,7 +34,9 @@ export class BotClient extends Client {
     try {
       this.movies = new MovieService()
       this.games = new GameService()
+      this.music = new MusicService()
       await this.games.initAuthToken()
+      await this.music.initAuthToken()
       console.log('Services initiated!')
     } catch (error) {
       console.error(
@@ -47,6 +51,7 @@ export class BotClient extends Client {
       movie: this.db.movieReview,
       series: this.db.seriesReview,
       game: this.db.gameReview,
+      music: this.db.musicReview,
     }
 
     return collections[name]

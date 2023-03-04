@@ -57,3 +57,23 @@ model GameReview {
 
   @@index([gameId, guildId, userId])
 }
+
+enum Replayability {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model MusicReview {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  albumId String
+  guildId String
+  score Int
+  replayability Replayability
+  comment String?
+  userId String
+  username String
+  createdAt DateTime @default(now()) @map("_createdAt")
+
+  @@index([albumId, guildId, userId])
+}
