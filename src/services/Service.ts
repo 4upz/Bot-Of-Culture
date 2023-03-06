@@ -5,7 +5,7 @@ export default abstract class Service {
   protected readonly baseURL: string
   protected headers: NeedleOptions
 
-  protected constructor(baseURL: string, token: string) {
+  protected constructor(baseURL: string, token?: string) {
     this.baseURL = baseURL
     this.headers = { headers: { Authorization: `Bearer ${token}` } }
   }

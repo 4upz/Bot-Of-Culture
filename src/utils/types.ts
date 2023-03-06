@@ -65,3 +65,10 @@ export interface GameSearchResult extends SearchResult {
   developer: string
   publisher: string
 }
+
+export interface AlbumSearchResult extends SearchResult {
+  artist: string
+  tracks: number
+  link: string
+  albumType: string
+}
