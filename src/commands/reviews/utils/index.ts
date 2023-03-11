@@ -18,7 +18,11 @@ import dayjs from 'dayjs'
 import { GameReview, MovieReview, Prisma, SeriesReview } from '@prisma/client'
 import { gameReviewChoices, reviewChoices } from '../../utils/choices'
 import { BotClient } from '../../../Bot'
-import { ReviewType, SearchResult } from '../../../utils/types'
+import {
+  MusicSearchResult,
+  ReviewType,
+  SearchResult,
+} from '../../../utils/types'
 import { toNormalDate } from '../../../utils/helpers'
 
 type ReviewCreateResult = {
@@ -114,6 +118,7 @@ async function getSearchResultsForType(
 ) {
   if (type === 'movie') return await bot.movies.search(query)
   else if (type === 'series') return await bot.movies.searchSeries(query)
+  else if (type === 'music') return await bot.music.search(query)
   else return await bot.games.search(query)
 }
 
@@ -279,9 +284,14 @@ export async function replyWithResults(
           if (title.length > 73) title = `${title.substring(0, 69)}...`
 
           date = date ? dayjs(date).format('YYYY') : 'Date N/A'
+          const details =
+            type === 'music'
+              ? `${(<MusicSearchResult>result).artist}, ${date}`
+              : date
+
           return new ButtonBuilder()
             .setCustomId(`${customIdPrefix}_button_${result.id}`)
-            .setLabel(`${title} (${date})`)
+            .setLabel(`${title} (${details})`)
             .setStyle(ButtonStyle.Success)
         }),
       )
@@ -291,6 +301,7 @@ export async function replyWithResults(
       movie: '🎬',
       series: '📺',
       game: '🎮',
+      music: '🎵',
     }
     await interaction.reply({
       content:

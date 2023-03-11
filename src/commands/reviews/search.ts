@@ -38,6 +38,17 @@ const command = {
             .setDescription('The title of the game you wish to search')
             .setRequired(true),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('music')
+        .setDescription('Search for an album/single')
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('The title of the album/single you wish to search')
+            .setRequired(true),
+        ),
     ),
   execute: (interaction: ChatInputCommandInteraction) => {
     handleSubcommand(interaction, subcommandExecutors)
@@ -48,6 +59,7 @@ const subcommandExecutors = {
   movie: searchMovie,
   series: searchSeries,
   game: searchGames,
+  music: searchMusic,
 }
 
 async function searchMovie(interaction: ChatInputCommandInteraction) {
@@ -63,6 +75,11 @@ async function searchSeries(interaction: ChatInputCommandInteraction) {
 async function searchGames(interaction: ChatInputCommandInteraction) {
   const commandPrefix = 'searchSelect_game'
   await replyWithResults(interaction, commandPrefix, '', false, 'game')
+}
+
+async function searchMusic(interaction: ChatInputCommandInteraction) {
+  const commandPrefix = 'searchSelect_music'
+  await replyWithResults(interaction, commandPrefix, '', false, 'music')
 }
 
 export default command

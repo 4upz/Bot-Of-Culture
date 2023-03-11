@@ -1,5 +1,5 @@
 import needle, { BodyData } from 'needle'
-import { AlbumSearchResult, SearchResult } from 'src/utils/types'
+import { MusicSearchResult, SearchResult } from 'src/utils/types'
 import Service from './Service'
 
 export default class MusicService extends Service {
@@ -47,7 +47,7 @@ export default class MusicService extends Service {
     this.setAuthHeader(response.body.access_token)
   }
 
-  async search(query: string): Promise<AlbumSearchResult[]> {
+  async search(query: string): Promise<MusicSearchResult[]> {
     const endpoint = `${this.baseURL}/search`
     const params: BodyData = {
       q: query,
@@ -55,20 +55,10 @@ export default class MusicService extends Service {
       limit: 5,
     }
 
-    const results: Array<any> = await needle(
-      'get',
+    const results: Array<any> = await this.fetchRequestWithRetry(
       endpoint,
       params,
-      this.headers,
     )
-      .then((response) => {
-        if (response.body.error) throw new Error(response.body.error.message)
-        return response.body.albums.items
-      })
-      .catch((err) => {
-        console.dir(err)
-        throw err
-      })
 
     return results.map((result) => ({
       id: result.id,
@@ -87,5 +77,40 @@ export default class MusicService extends Service {
 
   async getById(id: string): Promise<SearchResult> {
     return null
+  }
+
+  /**
+   * Fetches data from the Spotify API
+   * If token is expired, it will refresh token and re-attempt request
+   * @param endpoint The spotify endpoint to query
+   * @param params The Needle params containing the request body to send
+   * @param retry Whether or not this is a retry attempt
+   * @returns The result of the query
+   * @throws Error if the request fails for any reason besides an expired token
+   * @private
+   */
+  private async fetchRequestWithRetry(
+    endpoint: string,
+    params: BodyData,
+    retry = false,
+  ): Promise<any[]> {
+    try {
+      const response: any = await needle('get', endpoint, params, this.headers)
+      // If unauthorized, getting a new auth token and awaiting the search
+      if (response.statusCode === 401)
+        if (!retry) {
+          await this.initAuthToken()
+          return await this.fetchRequestWithRetry(endpoint, params, true)
+        } else {
+          const { q: query } = params as any
+          throw new Error(`Something went wrong for request: ${query}.`)
+        }
+      else if (response.body.error) throw new Error(response.body.error.message)
+
+      return response.body.albums.items
+    } catch (error) {
+      console.dir(error)
+      throw error
+    }
   }
 }

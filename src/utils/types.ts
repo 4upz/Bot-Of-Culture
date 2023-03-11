@@ -10,7 +10,7 @@ type GameMode = {
   id: number
 }
 
-export type ReviewType = 'movie' | 'series' | 'game'
+export type ReviewType = 'movie' | 'series' | 'game' | 'music'
 
 export interface ActiveGame {
   id: string
@@ -66,7 +66,7 @@ export interface GameSearchResult extends SearchResult {
   publisher: string
 }
 
-export interface AlbumSearchResult extends SearchResult {
+export interface MusicSearchResult extends SearchResult {
   artist: string
   tracks: number
   link: string
