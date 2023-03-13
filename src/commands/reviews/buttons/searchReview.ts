@@ -26,6 +26,10 @@ async function getMovieReview(interaction: MessageComponentInteraction) {
     review = await bot.db.gameReview.findFirst({
       where: { guildId, gameId: targetId, userId },
     })
+  else if (type === 'music')
+    review = await bot.db.musicReview.findFirst({
+      where: { guildId, musicId: targetId, userId },
+    })
   else
     review = await bot.db.seriesReview.findFirst({
       where: { guildId, seriesId: targetId, userId },
@@ -35,6 +39,7 @@ async function getMovieReview(interaction: MessageComponentInteraction) {
     let targetInfo
     if (type === 'movie') targetInfo = await bot.movies.getById(targetId)
     else if (type === 'game') targetInfo = await bot.games.getById(targetId)
+    else if (type === 'music') targetInfo = await bot.music.getById(targetId)
     else targetInfo = await bot.movies.getSeriesById(targetId)
     const userAvatar = bot.guilds
       .resolve(guildId)

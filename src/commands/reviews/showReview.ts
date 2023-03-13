@@ -55,8 +55,23 @@ const commands = {
             .setName('reviewer')
             .setDescription('The user that created the review.'),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('music')
+        .setDescription('Show a review for an album/single')
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('The title of the album/single you wish to see.')
+            .setRequired(true),
+        )
+        .addUserOption((option) =>
+          option
+            .setName('reviewer')
+            .setDescription('The user that created the review.'),
+        ),
     ),
-
   execute: (interaction: ChatInputCommandInteraction) =>
     handleSubcommand(interaction, subcommandExecutors),
 }
@@ -65,6 +80,7 @@ const subcommandExecutors = {
   movie: searchMovieReview,
   series: searchSeriesReview,
   game: searchGameReview,
+  music: searchMusicReview,
 }
 
 async function searchMovieReview(interaction: ChatInputCommandInteraction) {
@@ -100,6 +116,18 @@ async function searchGameReview(interaction: ChatInputCommandInteraction) {
     '',
     true,
     'game',
+  )
+}
+
+async function searchMusicReview(interaction: ChatInputCommandInteraction) {
+  const user =
+    interaction.options.getUser('reviewer')?.id ?? interaction.user.id
+  await replyWithResults(
+    interaction,
+    `searchReview_music_${user}`,
+    '',
+    true,
+    'music',
   )
 }
 
