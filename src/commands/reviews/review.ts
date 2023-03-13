@@ -45,7 +45,7 @@ const command = {
         .setDescription('Review an album/single')
         .addStringOption((option) =>
           option
-            .setName('music')
+            .setName('title')
             .setDescription('The title of the album/single you wish to review')
             .setRequired(true),
         ),
