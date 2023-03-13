@@ -226,7 +226,7 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
       new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId('reviewReplayabilityInput')
-          .setLabel('How would you rate its replayability? (optional)')
+          .setLabel('How replayable is it? (optional)')
           .setMaxLength(6)
           .setPlaceholder('Low/Medium/High')
           .setStyle(TextInputStyle.Short)
