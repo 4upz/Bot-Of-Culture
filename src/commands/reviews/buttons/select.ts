@@ -134,7 +134,7 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
       resultInfoEmbed = resultInfoEmbed
         .addFields([
           { name: 'Artist', value: artist, inline: true },
-          { name: 'Tracks', value: tracks.toString(), inline: true },
+          { name: 'Tracks', value: tracks.toString() },
           { name: 'Type', value: albumType, inline: true },
         ])
         .setURL(link)

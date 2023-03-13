@@ -442,13 +442,20 @@ export function createReviewEmbed(
     ])
 
   if (type === 'music')
-    embed.addFields([
-      {
-        name: 'Replayability',
-        value: (<MusicReview>review).replayability?.toString() || 'N/A',
-        inline: true,
-      },
-    ])
+    embed
+      .addFields([
+        {
+          name: 'Replayability',
+          value: (<MusicReview>review).replayability?.toString() || 'N/A',
+          inline: true,
+        },
+      ])
+      .setURL((<MusicSearchResult>reviewTarget).link)
+      .setFooter({
+        text: 'Click to open the title on Spotify',
+        iconURL:
+          'https://developer.spotify.com/assets/branding-guidelines/icon3@2x.png',
+      })
 
   embed.addFields([
     { name: 'Score', value: formattedScore },
