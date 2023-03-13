@@ -38,6 +38,17 @@ const command = {
             .setDescription('The title of the game you wish to review')
             .setRequired(true),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('music')
+        .setDescription('Review an album/single')
+        .addStringOption((option) =>
+          option
+            .setName('music')
+            .setDescription('The title of the album/single you wish to review')
+            .setRequired(true),
+        ),
     ),
   execute: (interaction: ChatInputCommandInteraction) =>
     handleSubcommand(interaction, subcommandExecutors),
@@ -47,6 +58,7 @@ const subcommandExecutors = {
   movie: startMovieReview,
   series: startSeriesReview,
   game: startGameReview,
+  music: startMusicReview,
 }
 
 async function startMovieReview(interaction: ChatInputCommandInteraction) {
@@ -85,6 +97,19 @@ async function startGameReview(interaction: ChatInputCommandInteraction) {
     additionalMessage,
     true,
     'game',
+  )
+}
+
+async function startMusicReview(interaction: ChatInputCommandInteraction) {
+  const commandPrefix = 'startReview_music'
+  const additionalMessage =
+    '*If already reviewed, you will be updating your previous score.*'
+  await replyWithResults(
+    interaction,
+    commandPrefix,
+    additionalMessage,
+    true,
+    'music',
   )
 }
 

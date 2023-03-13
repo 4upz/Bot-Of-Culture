@@ -15,8 +15,19 @@ import {
   TextInputStyle,
 } from 'discord.js'
 import dayjs from 'dayjs'
-import { GameReview, MovieReview, Prisma, SeriesReview } from '@prisma/client'
-import { gameReviewChoices, reviewChoices } from '../../utils/choices'
+import {
+  GameReview,
+  MovieReview,
+  MusicReview,
+  Prisma,
+  Replayability,
+  SeriesReview,
+} from '@prisma/client'
+import {
+  gameReviewChoices,
+  musicReviewChoices,
+  reviewChoices,
+} from '../../utils/choices'
 import { BotClient } from '../../../Bot'
 import {
   MusicSearchResult,
@@ -111,6 +122,33 @@ async function saveGameReview(
   }
 }
 
+async function saveMusicReview(
+  data: Prisma.MusicReviewCreateInput,
+  bot: BotClient,
+) {
+  let review = await bot.db.musicReview.findFirst({
+    where: {
+      userId: data.userId,
+      musicId: data.musicId,
+      guildId: data.guildId,
+    },
+  })
+
+  if (review) {
+    review = await bot.db.musicReview.update({
+      where: { id: review.id },
+      data,
+    })
+    return { review, message: 'Review successfully updated!' }
+  } else {
+    review = await bot.db.musicReview.create({ data })
+    return {
+      review: review as MusicReview,
+      message: 'Review successfully added! 🎉',
+    }
+  }
+}
+
 async function getSearchResultsForType(
   type: ReviewType,
   query: string,
@@ -128,14 +166,18 @@ export async function promptReview(interaction: MessageComponentInteraction) {
   const type = params[1]
 
   try {
-    const choices = type === 'game' ? gameReviewChoices : reviewChoices
+    let choices = reviewChoices
+    if (type === 'game') choices = gameReviewChoices
+    if (type === 'music') choices = musicReviewChoices
     const actionRow = new ActionRowBuilder().addComponents(
       new SelectMenuBuilder()
         .setCustomId(`reviewScore_${type}_button_${targetId}`)
         .addOptions(...(choices as any)),
     )
     await interaction.update({
-      content: `Awesome! What would you rate this ${type}? 🤔`,
+      content: `Awesome! What would you rate this ${
+        type === 'music' ? 'project' : type
+      }? 🤔`,
       components: [actionRow as any],
     })
   } catch (error) {
@@ -178,6 +220,22 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
       ),
     )
 
+  if (type === 'music')
+    // Add option for replayability input
+    modal.addComponents(
+      new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('reviewReplayabilityInput')
+          .setLabel(
+            'How high of a replayability does the album/single have? (optional)',
+          )
+          .setMaxLength(6)
+          .setPlaceholder('Low/Medium/High')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false),
+      ),
+    )
+
   await interaction.showModal(modal)
   await interaction.deleteReply()
 }
@@ -212,6 +270,18 @@ export async function saveReview(
     data.hoursPlayed = parseInt(hoursPlayed) || 0
   }
 
+  if (type === 'music' && interaction.isModalSubmit()) {
+    const replayability = interaction.fields.getTextInputValue(
+      'reviewReplayabilityInput',
+    )
+    // Assign optional replayability input if valid and exists
+    if (
+      replayability &&
+      ['low', 'medium', 'high'].includes(replayability.toLowerCase())
+    )
+      data.replayability = replayability.toUpperCase() as Replayability
+  }
+
   try {
     let reviewTarget, review, statusReply
 
@@ -231,6 +301,14 @@ export async function saveReview(
       review = result.review
       statusReply = result.message
       reviewTarget = await bot.games.getById(data.gameId.toString())
+    } else if (type === 'music') {
+      const result = await saveMusicReview(
+        data as Prisma.MusicReviewCreateInput,
+        bot,
+      )
+      review = result.review
+      statusReply = result.message
+      reviewTarget = await bot.music.getById(data.musicId.toString())
     } else {
       const result = await saveSeriesReview(
         data as Prisma.SeriesReviewCreateInput,
@@ -251,7 +329,9 @@ export async function saveReview(
     )
 
     await interaction.channel.send({
-      content: `<@${review.userId}> just left a review for a ${type}!`,
+      content: `<@${review.userId}> just left a review for a${
+        type === 'music' ? 'n album/single' : ` ${type}`
+      }!`,
       embeds: [reviewInfoEmbed as any],
       components: [],
     })
@@ -325,7 +405,9 @@ export function convertScoreToStars(
   type?: string,
 ) {
   const suffix = count ? ` (${count})` : ''
-  const choices = type === 'game' ? gameReviewChoices : reviewChoices
+  let choices = reviewChoices
+  if (type === 'game') choices = gameReviewChoices
+  else if (type === 'music') choices = musicReviewChoices
   return (
     '⭐️'.repeat(score) +
     '▪️'.repeat(5 - score) +
@@ -335,7 +417,7 @@ export function convertScoreToStars(
 }
 
 export function createReviewEmbed(
-  review: MovieReview | SeriesReview | GameReview,
+  review: MovieReview | SeriesReview | GameReview | MusicReview,
   reviewTarget: SearchResult,
   avatar: string,
   type: string,
@@ -357,6 +439,15 @@ export function createReviewEmbed(
       {
         name: 'Hours Played',
         value: (<GameReview>review).hoursPlayed?.toString() || 'N/A',
+        inline: true,
+      },
+    ])
+
+  if (type === 'music')
+    embed.addFields([
+      {
+        name: 'Replayability',
+        value: (<MusicReview>review).replayability?.toString() || 'N/A',
         inline: true,
       },
     ])

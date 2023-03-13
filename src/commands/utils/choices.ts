@@ -57,3 +57,34 @@ export const gameReviewChoices: APISelectMenuOption[] = [
     description: 'GOATED. FLAWLESS. GOTY!',
   },
 ]
+
+export const musicReviewChoices: APISelectMenuOption[] = [
+  {
+    label: '⭐️',
+    value: '1',
+    description: 'Your ears will bleed.',
+  },
+  {
+    label: '⭐️️⭐️️',
+    value: '2',
+    description: 'Tolerable, but you will forget you even listened to it.',
+  },
+  {
+    label: '⭐️️⭐️️⭐️',
+    value: '3',
+    description:
+      'Decent, has some standout songs on there but also some misses. May not be for everyone.',
+  },
+  {
+    label: '⭐️️⭐️️⭐️⭐️',
+    value: '4',
+    description:
+      'Very solid album! While not perfect, definitely worth a listen.',
+  },
+  {
+    label: '⭐️️⭐️️⭐️⭐️⭐️',
+    value: '5',
+    description:
+      'Album of the year contender! Will be a classic in the future!',
+  },
+]
