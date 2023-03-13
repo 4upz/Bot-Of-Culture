@@ -226,9 +226,7 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
       new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId('reviewReplayabilityInput')
-          .setLabel(
-            'How high of a replayability does the album/single have? (optional)',
-          )
+          .setLabel('How would you rate its replayability? (optional)')
           .setMaxLength(6)
           .setPlaceholder('Low/Medium/High')
           .setStyle(TextInputStyle.Short)
