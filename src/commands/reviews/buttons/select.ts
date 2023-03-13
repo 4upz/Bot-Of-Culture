@@ -14,6 +14,7 @@ import {
 import {
   GameSearchResult,
   IReview,
+  MusicSearchResult,
   ReviewType,
   SeriesSearchResult,
 } from '../../../utils/types'
@@ -125,9 +126,29 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
       ])
     }
 
+    if (resultType === 'music') {
+      commandPrefix = 'startReview_music'
+
+      const { artist, tracks, link, albumType } = result as MusicSearchResult
+
+      resultInfoEmbed = resultInfoEmbed
+        .addFields([
+          { name: 'Artist', value: artist, inline: true },
+          { name: 'Tracks', value: tracks.toString(), inline: true },
+          { name: 'Type', value: albumType, inline: true },
+        ])
+        .setURL(link)
+        .setFooter({
+          text: 'Click to open the title on Spotify',
+          iconURL:
+            'https://developer.spotify.com/assets/branding-guidelines/icon3@2x.png',
+        })
+    }
+
     resultInfoEmbed = resultInfoEmbed.addFields([
       { name: 'Server Score', value: scoreDisplay, inline: true },
     ])
+
     if (resultType === 'game') {
       const avgHours = calculatePropertyAverage(serverReviews, 'hoursPlayed')
       resultInfoEmbed = resultInfoEmbed.addFields([
@@ -174,7 +195,8 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
 
 async function getByIdForType(type: string, id: string, bot: BotClient) {
   if (type === 'movie') return await bot.movies.getById(id)
-  else if (type == 'game') return await bot.games.getById(id)
+  else if (type === 'game') return await bot.games.getById(id)
+  else if (type === 'music') return await bot.music.getById(id)
   else return await bot.movies.getSeriesById(id)
 }
 

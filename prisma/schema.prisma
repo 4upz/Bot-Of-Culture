@@ -66,7 +66,7 @@ enum Replayability {
 
 model MusicReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
-  albumId String
+  musicId String
   guildId String
   score Int
   replayability Replayability
@@ -75,5 +75,5 @@ model MusicReview {
   username String
   createdAt DateTime @default(now()) @map("_createdAt")
 
-  @@index([albumId, guildId, userId])
+  @@index([musicId, guildId, userId])
 }

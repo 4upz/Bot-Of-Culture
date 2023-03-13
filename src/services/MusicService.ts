@@ -47,7 +47,7 @@ export default class MusicService extends Service {
     this.setAuthHeader(response.body.access_token)
   }
 
-  async search(query: string): Promise<MusicSearchResult[]> {
+  async search(query: string): Promise<SearchResult[]> {
     const endpoint = `${this.baseURL}/search`
     const params: BodyData = {
       q: query,
@@ -58,9 +58,26 @@ export default class MusicService extends Service {
     const results: Array<any> = await this.fetchRequestWithRetry(
       endpoint,
       params,
-    )
+    ).then((response) => response.albums.items)
 
-    return results.map((result) => ({
+    return results.map((album) => ({
+      id: album.id,
+      title: album.name,
+      description: `${
+        album.album_type.charAt(0).toUpperCase() + album.album_type.slice(1)
+      } By ${album.artists[0].name}`,
+      image: album.images[0].url,
+      date: album.release_date,
+      artist: album.artists[0].name,
+    }))
+  }
+
+  async getById(id: string): Promise<MusicSearchResult> {
+    const endpoint = `${this.baseURL}/albums/${id}`
+
+    const result: any = await this.fetchRequestWithRetry(endpoint)
+
+    return {
       id: result.id,
       title: result.name,
       description: `${
@@ -72,11 +89,7 @@ export default class MusicService extends Service {
       tracks: result.total_tracks,
       link: result.external_urls.spotify,
       albumType: result.album_type,
-    }))
-  }
-
-  async getById(id: string): Promise<SearchResult> {
-    return null
+    }
   }
 
   /**
@@ -91,9 +104,9 @@ export default class MusicService extends Service {
    */
   private async fetchRequestWithRetry(
     endpoint: string,
-    params: BodyData,
+    params?: BodyData,
     retry = false,
-  ): Promise<any[]> {
+  ): Promise<any> {
     try {
       const response: any = await needle('get', endpoint, params, this.headers)
       // If unauthorized, getting a new auth token and awaiting the search
@@ -107,7 +120,7 @@ export default class MusicService extends Service {
         }
       else if (response.body.error) throw new Error(response.body.error.message)
 
-      return response.body.albums.items
+      return response.body
     } catch (error) {
       console.dir(error)
       throw error
