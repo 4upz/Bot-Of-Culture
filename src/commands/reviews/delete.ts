@@ -38,6 +38,17 @@ const command = {
             .setDescription('The title of the game you reviewed')
             .setRequired(true),
         ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('music')
+        .setDescription('Delete review for an album/single')
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('The title of the album/single you reviewed')
+            .setRequired(true),
+        ),
     ),
   execute: handleDeleteReview,
 }
