@@ -191,14 +191,37 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
   const reviewScore = params[4]
   const type = params[1]
 
+  // Check if there is existing review for editing
+  const bot = interaction.client as BotClient
+  const existingReview = await bot
+    .getCollection(type as ReviewType)
+    .findFirst({
+      where: {
+        userId: interaction.user.id,
+        guildId: interaction.guildId,
+        [`${type}Id`]: targetId,
+      },
+    })
+    .catch((error: Error) => {
+      console.error(
+        '[Review Comment] Something went wrong fetching existing review. Error',
+        error.message,
+      )
+    })
+
+  let commentInput = new TextInputBuilder()
+    .setCustomId('reviewCommentInput')
+    .setLabel(`What did you think of the ${type}?`)
+    .setPlaceholder('Enter reasons behind your rating here!')
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(true)
+
+  if (existingReview)
+    commentInput = commentInput.setValue(existingReview.comment)
+
   const actionRow =
     new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
-      new TextInputBuilder()
-        .setCustomId('reviewCommentInput')
-        .setLabel(`What did you think of the ${type}?`)
-        .setPlaceholder('Enter reasons behind your rating here!')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true),
+      commentInput,
     )
 
   const modal = new ModalBuilder()
@@ -206,33 +229,47 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
     .setTitle('Review Comment')
     .addComponents(actionRow)
 
-  if (type === 'game')
+  if (type === 'game') {
     // Add option for hours input
-    modal.addComponents(
-      new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
-        new TextInputBuilder()
-          .setCustomId('reviewHoursInput')
-          .setLabel('How many hours did you play? (optional)')
-          .setMaxLength(3)
-          .setPlaceholder('20')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false),
-      ),
-    )
+    let hoursPlayedInput = new TextInputBuilder()
+      .setCustomId('reviewHoursInput')
+      .setLabel('How many hours did you play? (optional)')
+      .setMaxLength(3)
+      .setPlaceholder('20')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false)
 
-  if (type === 'music')
-    // Add option for replayability input
+    if (existingReview)
+      hoursPlayedInput = hoursPlayedInput.setValue(existingReview.hoursPlayed)
+
     modal.addComponents(
       new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
-        new TextInputBuilder()
-          .setCustomId('reviewReplayabilityInput')
-          .setLabel('How replayable is it? (optional)')
-          .setMaxLength(6)
-          .setPlaceholder('Low/Medium/High')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false),
+        hoursPlayedInput,
       ),
     )
+  }
+
+  if (type === 'music') {
+    // Add option for replayability input
+    let replayabilityInput = new TextInputBuilder()
+      .setCustomId('reviewReplayabilityInput')
+      .setLabel('How replayable is it? (optional)')
+      .setMaxLength(6)
+      .setPlaceholder('Low/Medium/High')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(false)
+
+    if (existingReview)
+      replayabilityInput = replayabilityInput.setValue(
+        existingReview.replayability,
+      )
+
+    modal.addComponents(
+      new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+        replayabilityInput,
+      ),
+    )
+  }
 
   await interaction.showModal(modal)
   await interaction.deleteReply()
@@ -326,8 +363,9 @@ export async function saveReview(
       type,
     )
 
+    const action = statusReply.includes('updated') ? 'updated' : 'created'
     await interaction.channel.send({
-      content: `<@${review.userId}> just left a review for a${
+      content: `<@${review.userId}> just ${action} a review for a${
         type === 'music' ? 'n album/single' : ` ${type}`
       }!`,
       embeds: [reviewInfoEmbed as any],
