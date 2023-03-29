@@ -1,6 +1,7 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
 import { replyWithResults } from './utils'
 import { handleSubcommand } from '../utils/helpers'
+import { ReviewType } from '../../utils/types'
 
 const commands = {
   data: new SlashCommandBuilder()
@@ -77,57 +78,27 @@ const commands = {
 }
 
 const subcommandExecutors = {
-  movie: searchMovieReview,
-  series: searchSeriesReview,
-  game: searchGameReview,
-  music: searchMusicReview,
+  movie: (interaction: ChatInputCommandInteraction) =>
+    searchReview(interaction, 'movie'),
+  series: (interaction: ChatInputCommandInteraction) =>
+    searchReview(interaction, 'series'),
+  game: (interaction: ChatInputCommandInteraction) =>
+    searchReview(interaction, 'game'),
+  music: (interaction: ChatInputCommandInteraction) =>
+    searchReview(interaction, 'music'),
 }
 
-async function searchMovieReview(interaction: ChatInputCommandInteraction) {
-  const user =
-    interaction.options.getUser('reviewer')?.id ?? interaction.user.id
+async function searchReview(
+  interaction: ChatInputCommandInteraction,
+  type: ReviewType,
+) {
+  const user = interaction.options.getUser('reviewer')?.id
   await replyWithResults(
     interaction,
-    `searchReview_movie_${user}`,
+    `searchReview_${type}_${user}`,
     '',
     true,
-    'movie',
-  )
-}
-
-async function searchSeriesReview(interaction: ChatInputCommandInteraction) {
-  const user =
-    interaction.options.getUser('reviewer')?.id ?? interaction.user.id
-  await replyWithResults(
-    interaction,
-    `searchReview_series_${user}`,
-    '',
-    true,
-    'series',
-  )
-}
-
-async function searchGameReview(interaction: ChatInputCommandInteraction) {
-  const user =
-    interaction.options.getUser('reviewer')?.id ?? interaction.user.id
-  await replyWithResults(
-    interaction,
-    `searchReview_game_${user}`,
-    '',
-    true,
-    'game',
-  )
-}
-
-async function searchMusicReview(interaction: ChatInputCommandInteraction) {
-  const user =
-    interaction.options.getUser('reviewer')?.id ?? interaction.user.id
-  await replyWithResults(
-    interaction,
-    `searchReview_music_${user}`,
-    '',
-    true,
-    'music',
+    type,
   )
 }
 

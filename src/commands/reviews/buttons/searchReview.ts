@@ -4,10 +4,10 @@ import { createReviewEmbed } from '../utils'
 
 const commands = {
   data: { name: 'searchReview' },
-  execute: getMovieReview,
+  execute: searchReview,
 }
 
-async function getMovieReview(interaction: MessageComponentInteraction) {
+async function searchReview(interaction: MessageComponentInteraction) {
   const bot = interaction.client as BotClient
   const params = interaction.customId.split('_')
   const type = params[1]
