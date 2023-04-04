@@ -2,7 +2,9 @@ import {
   ChannelType,
   EmbedBuilder,
   MessageComponentInteraction,
+  TextChannel,
   ThreadAutoArchiveDuration,
+  ThreadChannel,
 } from 'discord.js'
 import { createReviewEmbed } from './index'
 import { BotClient } from '../../../Bot'
@@ -85,20 +87,38 @@ export async function getAllReviews(
     'All reviews successfully found! 🤓 You can view them in the thread below.'
   if (reviews.length > 0) {
     const channel = bot.channels.cache.get(interaction.channelId)
+
+    let thread: ThreadChannel
+    const reviewEmbeds: EmbedBuilder[] = []
+
     if (channel.type === ChannelType.GuildText) {
-      // Create thread, attach it to notification message, and send all reviews
-      const startMessage = await channel.send(
-        `${targetInfo.title} Reviews requested by <@${interaction.user.id}>`,
-      )
-      const thread = await channel.threads.create({
-        startMessage,
-        name: `${targetInfo.title} Reviews`,
-        autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
-        reason: `Server Reviews for ${targetInfo.title} requested by <@${interaction.user.id}>. This will auto-archive after one day of inactivity.`,
-      })
-      const reviewEmbeds: EmbedBuilder[] = reviews.map((review) => {
+      // Check and make sure there isn't an existing thread. If there is, send the reviews there.
+      thread = await findThreadByName(channel, `${targetInfo.title} Reviews`)
+      if (thread) {
+        await thread.send(
+          `--------------------------------------------------\nNew Reviews requested by <@${interaction.user.id}>`,
+        )
+        await channel.send(
+          `A new list of reviews have been added to <#${thread.id}> as requested by <@${interaction.user.id}>!`,
+        )
+      } else {
+        // Create thread, attach it to notification message, and send all reviews
+        const startMessage = await channel.send(
+          `${targetInfo.title} Reviews requested by <@${interaction.user.id}>`,
+        )
+        thread = await channel.threads.create({
+          startMessage,
+          name: `${targetInfo.title} Reviews`,
+          autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
+          reason: `Server Reviews for ${targetInfo.title} requested by <@${interaction.user.id}>. This will auto-archive after one day of inactivity.`,
+        })
+      }
+
+      reviews.forEach((review) => {
         const userAvatar = bot.users.resolve(review.userId)?.avatarURL() || ''
-        return createReviewEmbed(review, targetInfo, userAvatar, type)
+        reviewEmbeds.push(
+          createReviewEmbed(review, targetInfo, userAvatar, type),
+        )
       })
       thread.send({ embeds: reviewEmbeds })
     } else {
@@ -129,4 +149,9 @@ async function getTargetInfo(targetId: string, bot: BotClient, type: string) {
   else targetInfo = await bot.movies.getSeriesById(targetId)
 
   return targetInfo
+}
+
+async function findThreadByName(channel: TextChannel, name: string) {
+  const results = await channel.threads.fetchActive()
+  return results.threads.find((thread) => thread.name.includes(name))
 }
