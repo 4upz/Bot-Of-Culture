@@ -16,8 +16,8 @@ loadCommands(bot).then(async () => {
   await bot.initDatabase()
   await bot.initServices()
   await bot.login(token)
-  bot.user.setActivity('with your emotions :)', {
-    type: ActivityType.Playing,
+  bot.user.setActivity('/review', {
+    type: ActivityType.Watching,
   })
 })
 

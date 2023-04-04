@@ -458,6 +458,9 @@ export function createReviewEmbed(
   avatar: string,
   type: string,
 ) {
+  // If no avatar is provided, use the default Discord avatar
+  const userAvatar = avatar || 'https://cdn.discordapp.com/embed/avatars/0.png'
+
   const formattedScore = `${convertScoreToStars(review.score, undefined, type)}`
   const description = truncateByMaxLength(reviewTarget.description, 1024)
   const embed = new EmbedBuilder()
@@ -465,7 +468,7 @@ export function createReviewEmbed(
     .setTitle(`*"${reviewTarget.title}"* review by ${review.username}`)
     .setAuthor({
       name: review.username,
-      iconURL: avatar,
+      iconURL: userAvatar,
     })
     .setDescription(review.comment)
     .setImage(reviewTarget.image)

@@ -99,8 +99,6 @@ export default class MovieService extends Service {
         throw err
       })
 
-    console.dir(result)
-
     // Extract specific series info we care about
     return {
       id: result.id.toString(),
