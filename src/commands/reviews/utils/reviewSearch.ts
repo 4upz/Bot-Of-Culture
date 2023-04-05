@@ -106,12 +106,15 @@ export async function getAllReviews(
         })
       }
 
-      reviews.forEach((review) => {
-        const userAvatar = bot.users.resolve(review.userId)?.avatarURL() || ''
+      for (const review of reviews) {
+        const userAvatar = await interaction.guild.members
+          .fetch(review.userId)
+          .then((member) => (member ? member.user.avatarURL() : ''))
+          .catch(() => '')
         reviewEmbeds.push(
           createReviewEmbed(review, targetInfo, userAvatar, type, true),
         )
-      })
+      }
       thread.send({ embeds: reviewEmbeds })
     } else {
       // Currently only support channels where threads can be created
