@@ -95,6 +95,7 @@ export async function getAllReviews(
       // Check and make sure there isn't an existing thread. If there is, send the reviews there.
       thread = await findThreadByName(channel, `${targetInfo.title} Reviews`)
       if (thread) {
+        if (thread.archived) await thread.setArchived(false)
         await thread.send(
           `--------------------------------------------------\nNew Reviews requested by <@${interaction.user.id}>`,
         )
@@ -152,6 +153,6 @@ async function getTargetInfo(targetId: string, bot: BotClient, type: string) {
 }
 
 async function findThreadByName(channel: TextChannel, name: string) {
-  const results = await channel.threads.fetchActive()
+  const results = await channel.threads.fetch()
   return results.threads.find((thread) => thread.name.includes(name))
 }
