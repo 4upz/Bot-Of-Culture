@@ -30,6 +30,7 @@ import {
 } from '../../utils/choices'
 import { BotClient } from '../../../Bot'
 import {
+  IReview,
   MusicSearchResult,
   ReviewType,
   SearchResult,
@@ -453,10 +454,11 @@ export function convertScoreToStars(
 }
 
 export function createReviewEmbed(
-  review: MovieReview | SeriesReview | GameReview | MusicReview,
+  review: IReview,
   reviewTarget: SearchResult,
   avatar: string,
   type: string,
+  truncated?: boolean,
 ) {
   // If no avatar is provided, use the default Discord avatar
   const userAvatar = avatar || 'https://cdn.discordapp.com/embed/avatars/0.png'
@@ -465,13 +467,11 @@ export function createReviewEmbed(
   const description = truncateByMaxLength(reviewTarget.description, 1024)
   const embed = new EmbedBuilder()
     .setColor('#01b4e4')
-    .setTitle(`*"${reviewTarget.title}"* review by ${review.username}`)
     .setAuthor({
       name: review.username,
       iconURL: userAvatar,
     })
     .setDescription(review.comment)
-    .setImage(reviewTarget.image)
 
   if (type === 'game')
     embed.addFields([
@@ -482,35 +482,42 @@ export function createReviewEmbed(
       },
     ])
 
-  if (type === 'music')
-    embed
-      .addFields([
-        {
-          name: 'Replayability',
-          value: (<MusicReview>review).replayability?.toString() || 'N/A',
-          inline: true,
-        },
-      ])
-      .setURL((<MusicSearchResult>reviewTarget).link)
-      .setFooter({
+  if (type === 'music') {
+    embed.addFields([
+      {
+        name: 'Replayability',
+        value: (<MusicReview>review).replayability?.toString() || 'N/A',
+        inline: true,
+      },
+    ])
+    if (!truncated)
+      embed.setURL((<MusicSearchResult>reviewTarget).link).setFooter({
         text: 'Click to open the title on Spotify',
         iconURL:
           'https://developer.spotify.com/assets/branding-guidelines/icon3@2x.png',
       })
+  }
 
-  embed.addFields([
-    { name: 'Score', value: formattedScore },
-    {
-      name: 'Release Date',
-      value: toNormalDate(reviewTarget.date),
-      inline: true,
-    },
-    {
-      name: 'Description',
-      value: description,
-      inline: true,
-    },
-  ])
+  embed.addFields([{ name: 'Score', value: formattedScore }])
+
+  // We only show these extra details when not using the truncated (shortened) embed
+  if (!truncated)
+    embed
+      .setTitle(`*"${reviewTarget.title}"* review by ${review.username}`)
+      .setImage(reviewTarget.image)
+      .addFields([
+        {
+          name: 'Release Date',
+          value: toNormalDate(reviewTarget.date),
+          inline: true,
+        },
+        {
+          name: 'Description',
+          value: description,
+          inline: true,
+        },
+      ])
+
   return embed
 }
 

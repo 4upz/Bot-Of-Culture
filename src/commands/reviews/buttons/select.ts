@@ -200,7 +200,7 @@ async function getByIdForType(type: string, id: string, bot: BotClient) {
   else return await bot.movies.getSeriesById(id)
 }
 
-async function getReviewsForType(
+export async function getReviewsForType(
   type: string,
   id: string,
   guildId: string,
@@ -215,7 +215,7 @@ async function getReviewsForType(
   })
 }
 
-function calculatePropertyAverage(
+export function calculatePropertyAverage(
   reviews: IReview[],
   property: 'hoursPlayed' | 'score',
 ) {
@@ -225,7 +225,7 @@ function calculatePropertyAverage(
   return Math.floor(rawAverage)
 }
 
-function createReviewPromptMessage(
+export function createReviewPromptMessage(
   reviews: IReview[],
   userId: string,
 ): string | void {

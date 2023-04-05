@@ -8,6 +8,9 @@ import {
 } from 'discord.js'
 import { createReviewEmbed } from './index'
 import { BotClient } from '../../../Bot'
+import { getReviewsForType } from '../buttons/select'
+import { createOverviewEmbed } from './formatter'
+import { ReviewType } from '../../../utils/types'
 
 export async function getReviewForUser(
   params: { [key: string]: string },
@@ -65,31 +68,19 @@ export async function getAllReviews(
   const bot = interaction.client as BotClient
   const targetInfo = await getTargetInfo(targetId, bot, type)
 
-  let reviews
-  if (type === 'movie')
-    reviews = await bot.db.movieReview.findMany({
-      where: { guildId, movieId: targetId },
-    })
-  else if (type === 'game')
-    reviews = await bot.db.gameReview.findMany({
-      where: { guildId, gameId: targetId },
-    })
-  else if (type === 'music')
-    reviews = await bot.db.musicReview.findMany({
-      where: { guildId, musicId: targetId },
-    })
-  else
-    reviews = await bot.db.seriesReview.findMany({
-      where: { guildId, seriesId: targetId },
-    })
+  const reviews = await getReviewsForType(type, targetId, guildId, bot)
 
   let statusMessage =
     'All reviews successfully found! 🤓 You can view them in the thread below.'
   if (reviews.length > 0) {
     const channel = bot.channels.cache.get(interaction.channelId)
+    const reviewEmbeds: EmbedBuilder[] = []
 
     let thread: ThreadChannel
-    const reviewEmbeds: EmbedBuilder[] = []
+
+    await createOverviewEmbed(targetInfo, reviews, type as ReviewType).then(
+      (embed) => reviewEmbeds.push(embed),
+    )
 
     if (channel.type === ChannelType.GuildText) {
       // Check and make sure there isn't an existing thread. If there is, send the reviews there.
@@ -118,13 +109,13 @@ export async function getAllReviews(
       reviews.forEach((review) => {
         const userAvatar = bot.users.resolve(review.userId)?.avatarURL() || ''
         reviewEmbeds.push(
-          createReviewEmbed(review, targetInfo, userAvatar, type),
+          createReviewEmbed(review, targetInfo, userAvatar, type, true),
         )
       })
       thread.send({ embeds: reviewEmbeds })
     } else {
       // Currently only support channels where threads can be created
-      interaction.editReply({
+      await interaction.editReply({
         content:
           'Sorry, reviews can only be sent in a server text channel. Please try again in a valid channel.',
         components: [],
