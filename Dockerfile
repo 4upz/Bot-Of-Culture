@@ -1,0 +1,25 @@
+# Description: Dockerfile for the nodejs application
+
+# Use the official image as a base image
+FROM node:18
+
+# Set the working directory
+WORKDIR /app
+
+# Copy package.json and yarn.lock
+COPY package*.json yarn.lock ./
+
+# Install dependencies
+RUN yarn install
+
+# Copy the rest of your code
+COPY . .
+
+# Transpile TypeScript to JavaScript
+RUN yarn build
+
+# Expose the port your app runs on
+EXPOSE 8080
+
+# Command to run your app
+CMD [ "node", "dist/app.js" ]
