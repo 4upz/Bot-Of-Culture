@@ -19,8 +19,11 @@ COPY . .
 # Transpile TypeScript to JavaScript
 RUN yarn build
 
+# Environment affects which config variables are used. Change to dev or exclude for local development
+ENV ENV=PROD
+
 # Expose the port your app runs on
 EXPOSE 8080
 
 # Command to run your app
-CMD [ "node", "dist/app.js" ]
+CMD [ "node", "dist/app.js"]
