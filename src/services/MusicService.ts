@@ -6,13 +6,13 @@ export default class MusicService extends Service {
   private readonly clientId: string
   private readonly clientSecret: string
 
-  constructor() {
+  constructor(clientId: string, clientSecret: string) {
     const baseURL = 'https://api.spotify.com/v1'
 
     super(baseURL)
 
-    this.clientId = process.env.SPOTIFY_CLIENT_ID ?? ''
-    this.clientSecret = process.env.SPOTIFY_CLIENT_SECRET ?? ''
+    this.clientId = clientId
+    this.clientSecret = clientSecret
   }
 
   async initAuthToken() {

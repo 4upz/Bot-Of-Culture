@@ -4,14 +4,14 @@
   "description": "A Discord Bot curated for the Men of Culture discord server",
   "main": "app.js",
   "repository": "git@github.com:4upz/Bot-Of-Culture.git",
-  "author": "Arik Smith (4upz) <ams382@case.edu>",
+  "author": "Arik Smith (4upz) <arik.m.smith@gmail.com>",
   "license": "MIT",
   "engines": {
-    "node": ">=16.x"
+    "node": ">=18.x"
   },
   "private": "true",
   "scripts": {
-    "start": "node ./dist/app.js",
+    "start": "node ENV=prod ./dist/app.js",
     "dev": "ts-node-dev src/app.ts",
     "dev:tutorial": "nodemon src/tutorial/legacyApp.js",
     "build": "tsc -p .",
@@ -35,6 +35,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
+    "@google-cloud/secret-manager": "^5.2.0",
     "@prisma/client": "^4.5.0",
     "dayjs": "^1.11.6",
     "discord-interactions": "^3.2.0",

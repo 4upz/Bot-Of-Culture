@@ -1,4 +1,5 @@
 # Description: Dockerfile for the nodejs application
+# TODO: Separate into build stages and use a smaller image for production that excludes dev dependencies
 
 # Use the official image as a base image
 FROM node:18

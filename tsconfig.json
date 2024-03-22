@@ -1,29 +1,23 @@
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "moduleResolution": "node",
-        "noImplicitAny": true,
-        "removeComments": true,
-        "preserveConstEnums": true,
-        "sourceMap": true,
-        "lib": ["es2019"],
-        "esModuleInterop": true,
-        "rootDir": "./src",
-        "baseUrl": ".",
-        "outDir": "./dist",
-        "experimentalDecorators": true,
-        "target": "esnext",
-        "downlevelIteration": true,
-        "resolveJsonModule": true,
-        "noImplicitReturns": true,
-        "declaration": false,
-    },
-    "include": [
-        "./**/*.ts"
-, "scripts/deployCommands.js"    ],
-    "exclude": [
-        "node_modules",
-        "dist",
-        "scripts"
-    ],
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "lib": ["es2019"],
+    "esModuleInterop": true,
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "experimentalDecorators": true,
+    "target": "esnext",
+    "downlevelIteration": true,
+    "resolveJsonModule": true,
+    "noImplicitReturns": true,
+    "declaration": false
+  },
+  "include": ["./**/*.ts", "scripts/deployCommands.js"],
+  "exclude": ["node_modules", "dist", "scripts"]
 }

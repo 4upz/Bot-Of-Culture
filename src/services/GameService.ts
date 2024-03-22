@@ -9,14 +9,14 @@ export default class GameService extends Service {
   private readonly clientId: string
   private readonly clientSecret: string
 
-  constructor() {
+  constructor(clientId: string, clientSecret: string) {
     const baseURL = 'https://api.igdb.com/v4/games'
 
     // Token will start off as null
     super(baseURL, null)
 
-    this.clientId = process.env.TWITCH_CLIENT_ID ?? ''
-    this.clientSecret = process.env.TWITCH_CLIENT_SECRET ?? ''
+    this.clientId = clientId
+    this.clientSecret = clientSecret
   }
 
   async initAuthToken() {

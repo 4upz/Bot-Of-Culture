@@ -1,0 +1,12 @@
+version: '3'
+services:
+  app:
+    build:
+      context: .
+    volumes:
+      - ${HOME}/config/.gcloud/bot-of-culture-key.json:/app/service-account-key.json
+    image: bot-of-culture
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/service-account-key.json
+    ports:
+      - '8080:8080'

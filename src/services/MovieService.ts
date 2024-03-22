@@ -1,13 +1,9 @@
-import dotenv from 'dotenv'
 import needle, { BodyData } from 'needle'
 import { SearchResult, SeriesSearchResult } from 'src/utils/types'
 import Service from './Service'
 
-dotenv.config()
-
 export default class MovieService extends Service {
-  constructor() {
-    const token = process.env.MOVIE_TOKEN ?? ''
+  constructor(token: string) {
     if (!token)
       throw new Error('Missing or incorrect TMDB API Authorization token')
     const baseURL = 'https://api.themoviedb.org/3'
