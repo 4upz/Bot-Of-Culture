@@ -30,10 +30,10 @@ async function handleShareReview(interaction: MessageComponentInteraction) {
       .setPlaceholder('Choose how to share this review')
       .addOptions([
         {
-          label: 'Share Score',
+          label: 'Co-sign',
           description: 'Add this exact score to your review',
           value: 'exact',
-          emoji: '👍',
+          emoji: '✍️',
         },
         {
           label: 'Quote Review',
