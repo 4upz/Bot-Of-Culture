@@ -20,13 +20,16 @@ model RPSGame {
 
 model MovieReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
-  movieId String  
+  movieId String
   guildId String
   score Int
   comment String?
   userId String
   username String
   createdAt DateTime @default(now()) @map("_createdAt")
+  sharedFromUserId String?
+  sharedFromUsername String?
+  isQuote Boolean @default(false)
 
   @@index([movieId, guildId, userId])
 }
@@ -40,6 +43,9 @@ model SeriesReview {
   userId String
   username String
   createdAt DateTime @default(now()) @map("_createdAt")
+  sharedFromUserId String?
+  sharedFromUsername String?
+  isQuote Boolean @default(false)
 
   @@index([seriesId, guildId, userId])
 }
@@ -54,6 +60,9 @@ model GameReview {
   userId String
   username String
   createdAt DateTime @default(now()) @map("_createdAt")
+  sharedFromUserId String?
+  sharedFromUsername String?
+  isQuote Boolean @default(false)
 
   @@index([gameId, guildId, userId])
 }
@@ -74,6 +83,9 @@ model MusicReview {
   userId String
   username String
   createdAt DateTime @default(now()) @map("_createdAt")
+  sharedFromUserId String?
+  sharedFromUsername String?
+  isQuote Boolean @default(false)
 
   @@index([musicId, guildId, userId])
 }

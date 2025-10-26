@@ -357,12 +357,31 @@ export async function saveReview(
 
     if (!comment) review.comment = '*No comment added*'
 
+    // Calculate share/quote count for this review
+    const shareQuoteCount = await getShareQuoteCount(
+      type as ReviewType,
+      data[`${type}Id`].toString(),
+      review.userId,
+      interaction.guildId,
+      bot,
+    )
+
     const reviewInfoEmbed = createReviewEmbed(
       review,
       reviewTarget,
       interaction.user.avatarURL(),
       type,
+      false,
+      shareQuoteCount,
     )
+
+    // Add Share button to the broadcast
+    const shareButton = new ButtonBuilder()
+      .setCustomId(`shareReview_${type}_button_${data[`${type}Id`]}_${review.userId}`)
+      .setLabel('Share This Review')
+      .setStyle(ButtonStyle.Primary)
+
+    const actionRow = new ActionRowBuilder().addComponents(shareButton)
 
     const action = statusReply.includes('updated') ? 'updated' : 'created'
     await interaction.channel.send({
@@ -370,7 +389,7 @@ export async function saveReview(
         type === 'music' ? 'n album/single' : ` ${type}`
       }!`,
       embeds: [reviewInfoEmbed as any],
-      components: [],
+      components: [actionRow as any],
     })
 
     await interaction.editReply(statusReply)
@@ -459,6 +478,7 @@ export function createReviewEmbed(
   avatar: string,
   type: string,
   truncated?: boolean,
+  shareQuoteCount?: { shareCount: number; quoteCount: number; total: number },
 ) {
   // If no avatar is provided, use the default Discord avatar
   const userAvatar = avatar || 'https://cdn.discordapp.com/embed/avatars/0.png'
@@ -500,6 +520,41 @@ export function createReviewEmbed(
 
   embed.addFields([{ name: 'Score', value: formattedScore }])
 
+  // Add attribution field if this review was shared or quoted
+  if ((review as any).sharedFromUserId) {
+    const shareType = (review as any).isQuote ? 'Quoted' : 'Shared'
+    const attributionText = `${shareType} from <@${(review as any).sharedFromUserId}>'s review`
+    embed.addFields([
+      {
+        name: shareType === 'Quoted' ? '💬 Quoted From' : '👍 Shared From',
+        value: attributionText,
+        inline: false,
+      },
+    ])
+  }
+
+  // Add share/quote count if this is an original review that others have shared
+  if (shareQuoteCount && shareQuoteCount.total > 0) {
+    const countParts = []
+    if (shareQuoteCount.shareCount > 0) {
+      countParts.push(
+        `${shareQuoteCount.shareCount} share${shareQuoteCount.shareCount !== 1 ? 's' : ''}`,
+      )
+    }
+    if (shareQuoteCount.quoteCount > 0) {
+      countParts.push(
+        `${shareQuoteCount.quoteCount} quote${shareQuoteCount.quoteCount !== 1 ? 's' : ''}`,
+      )
+    }
+    embed.addFields([
+      {
+        name: '📊 Impact',
+        value: countParts.join(' • '),
+        inline: true,
+      },
+    ])
+  }
+
   // We only show these extra details when not using the truncated (shortened) embed
   if (!truncated)
     embed
@@ -530,4 +585,27 @@ export function truncateByMaxLength(description: string, maxLength: number) {
   if (description.length > maxLength)
     return description.substring(0, maxLength - 3) + '...'
   return description
+}
+
+export async function getShareQuoteCount(
+  type: ReviewType,
+  mediaId: string,
+  userId: string,
+  guildId: string,
+  bot: BotClient,
+) {
+  const collection = bot.getCollection(type)
+
+  const sharedReviews = await collection.findMany({
+    where: {
+      [`${type}Id`]: mediaId,
+      guildId,
+      sharedFromUserId: userId,
+    },
+  })
+
+  const shareCount = sharedReviews.filter((r: any) => !r.isQuote).length
+  const quoteCount = sharedReviews.filter((r: any) => r.isQuote).length
+
+  return { shareCount, quoteCount, total: sharedReviews.length }
 }
