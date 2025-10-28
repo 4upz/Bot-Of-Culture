@@ -93,8 +93,11 @@ export default class GameService extends Service {
       'fields name, summary, cover.url, release_dates.y, genres.name, involved_companies.developer, involved_companies.publisher, involved_companies.company.name, platforms.name, game_modes.name, aggregated_rating, aggregated_rating_count;'
     let requestBody = query + fields
     if (query.includes('search')) {
-      // Exclude expansions, dlc, and special editions
-      const filter = 'where category = (0, 4, 8, 10) & version_title = null;'
+      // Filter to main games, standalone expansions, remakes, and expanded games
+      // Exclude DLC, expansions, bundles, mods, episodes, seasons, remasters, ports, etc.
+      // Also filter to actual games (not null) and parent versions only (not editions)
+      const filter =
+        'where game != null & game_type = (0, 4, 8, 10) & version_parent = null;'
       const limit = 'limit 5;\n'
       requestBody += filter + limit
     }
