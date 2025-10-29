@@ -323,7 +323,7 @@ export async function saveReview(
 
     if (type === 'movie') {
       const result = await saveMovieReview(
-        data as Prisma.MovieReviewCreateInput,
+        data as unknown as Prisma.MovieReviewCreateInput,
         bot,
       )
       review = result.review
@@ -331,7 +331,7 @@ export async function saveReview(
       reviewTarget = await bot.movies.getById(data.movieId.toString())
     } else if (type === 'game') {
       const result = await saveGameReview(
-        data as Prisma.GameReviewCreateInput,
+        data as unknown as Prisma.GameReviewCreateInput,
         bot,
       )
       review = result.review
@@ -339,7 +339,7 @@ export async function saveReview(
       reviewTarget = await bot.games.getById(data.gameId.toString())
     } else if (type === 'music') {
       const result = await saveMusicReview(
-        data as Prisma.MusicReviewCreateInput,
+        data as unknown as Prisma.MusicReviewCreateInput,
         bot,
       )
       review = result.review
@@ -347,7 +347,7 @@ export async function saveReview(
       reviewTarget = await bot.music.getById(data.musicId.toString())
     } else {
       const result = await saveSeriesReview(
-        data as Prisma.SeriesReviewCreateInput,
+        data as unknown as Prisma.SeriesReviewCreateInput,
         bot,
       )
       review = result.review
