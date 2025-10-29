@@ -1,5 +1,6 @@
 import { NeedleOptions } from 'needle'
 import { SearchResult } from '../utils/types'
+import { OutgoingHttpHeaders } from 'http'
 
 export default abstract class Service {
   protected readonly baseURL: string
@@ -16,8 +17,9 @@ export default abstract class Service {
    * @param clientId  the optional clientId to be used
    */
   setAuthHeader(token: string, clientId?: string) {
-    this.headers.headers.Authorization = `Bearer ${token}`
-    if (clientId) this.headers.headers['Client-ID'] = clientId
+    const headers = this.headers.headers as OutgoingHttpHeaders
+    headers.Authorization = `Bearer ${token}`
+    if (clientId) headers['Client-ID'] = clientId
   }
 
   /**

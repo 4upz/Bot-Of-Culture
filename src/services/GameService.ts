@@ -40,6 +40,11 @@ export default class GameService extends Service {
     const request = `search "${query}";\n`
     const results = await this.fetchRequest(request)
 
+    if (!Array.isArray(results)) {
+      console.error('API returned non-array response:', results)
+      return []
+    }
+
     return results.map((result: any) => ({
       id: result.id,
       title: result.name,
@@ -90,14 +95,13 @@ export default class GameService extends Service {
   private async fetchRequest(query: string, retry = false): Promise<any[]> {
     // Builds apocalypse query
     const fields =
-      'fields name, summary, cover.url, release_dates.y, genres.name, involved_companies.developer, involved_companies.publisher, involved_companies.company.name, platforms.name, game_modes.name, aggregated_rating, aggregated_rating_count;'
+      'fields name, summary, cover.url, release_dates.y, genres.name, involved_companies.*, platforms.name, game_modes.name, aggregated_rating, aggregated_rating_count;'
     let requestBody = query + fields
     if (query.includes('search')) {
       // Filter to main games, standalone expansions, remakes, and expanded games
       // Exclude DLC, expansions, bundles, mods, episodes, seasons, remasters, ports, etc.
-      // Also filter to actual games (not null) and parent versions only (not editions)
-      const filter =
-        'where game != null & game_type = (0, 4, 8, 10) & version_parent = null;'
+      // Also filter to parent versions only (not editions)
+      const filter = 'where game_type = (0, 4, 8, 10) & version_parent = null;'
       const limit = 'limit 5;\n'
       requestBody += filter + limit
     }
@@ -114,9 +118,16 @@ export default class GameService extends Service {
       .then((response) => {
         results = response.body
         statusCode = response.statusCode
+
+        // Log non-200 responses for debugging
+        if (statusCode !== 200) {
+          console.error(`IGDB API returned status ${statusCode}`)
+          console.error('Request body:', requestBody)
+          console.error('Response body:', JSON.stringify(results, null, 2))
+        }
       })
       .catch((error) => {
-        console.error(error.message)
+        console.error('IGDB API request failed:', error.message)
         throw error
       })
 

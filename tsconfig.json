@@ -6,17 +6,18 @@
     "removeComments": true,
     "preserveConstEnums": true,
     "sourceMap": true,
-    "lib": ["es2019"],
+    "lib": ["ES2022"],
     "esModuleInterop": true,
     "rootDir": "./src",
     "baseUrl": ".",
     "outDir": "./dist",
     "experimentalDecorators": true,
-    "target": "esnext",
+    "target": "ES2022",
     "downlevelIteration": true,
     "resolveJsonModule": true,
     "noImplicitReturns": true,
-    "declaration": false
+    "declaration": false,
+    "skipLibCheck": true
   },
   "include": ["./**/*.ts", "scripts/deployCommands.js"],
   "exclude": ["node_modules", "dist", "scripts"]
