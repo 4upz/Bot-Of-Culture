@@ -16,6 +16,9 @@ RUN yarn install
 # Copy the rest of your code
 COPY . .
 
+# Generate Prisma client
+RUN yarn prisma:generate
+
 # Transpile TypeScript to JavaScript
 RUN yarn build
 

@@ -240,8 +240,8 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
       .setStyle(TextInputStyle.Short)
       .setRequired(false)
 
-    if (existingReview)
-      hoursPlayedInput = hoursPlayedInput.setValue(existingReview.hoursPlayed)
+    if (existingReview && existingReview.hoursPlayed !== null)
+      hoursPlayedInput = hoursPlayedInput.setValue(String(existingReview.hoursPlayed))
 
     modal.addComponents(
       new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
