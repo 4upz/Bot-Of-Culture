@@ -180,11 +180,9 @@ async function saveSharedReview(
   }
 
   try {
-    // Defer or update depending on interaction type
+    // Defer with ephemeral reply for all cases
     if (interaction.deferred || interaction.replied) {
       // Already deferred or replied, we'll edit later
-    } else if (interaction.isButton()) {
-      await interaction.deferUpdate()
     } else {
       await interaction.deferReply({ ephemeral: true })
     }
@@ -346,21 +344,15 @@ async function saveSharedReview(
           addReviewButton,
         )
 
+        // Update only the embed and buttons, NOT the message content
         await originalMessage.edit({
           embeds: [updatedEmbed as any],
           components: [actionRow as any],
         })
       }
 
-      // Edit the ephemeral message to show success
-      if (interaction.isButton() && interaction.message.flags.has('Ephemeral')) {
-        await interaction.editReply({
-          content: statusReply,
-          components: [],
-        })
-      } else {
-        await interaction.editReply(statusReply)
-      }
+      // Send ephemeral success message
+      await interaction.editReply(statusReply)
     }
   } catch (error) {
     console.error('[Save Shared Review] Error:', error)
