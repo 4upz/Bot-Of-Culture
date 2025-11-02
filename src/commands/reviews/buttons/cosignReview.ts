@@ -80,7 +80,7 @@ async function handleCosignReview(interaction: MessageComponentInteraction) {
             row.components.some(
               (component) =>
                 component.customId ===
-                `shareReview_${type}_button_${mediaId}_${originalUserId}`,
+                `cosignReview_${type}_button_${mediaId}_${originalUserId}`,
             ),
           )
           return hasButton
