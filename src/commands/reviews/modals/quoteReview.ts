@@ -1,7 +1,7 @@
 import { ModalSubmitInteraction } from 'discord.js'
 import { BotClient } from '../../../Bot'
 import { ReviewType } from '../../../utils/types'
-import { saveSharedReview } from '../buttons/shareMode'
+import { saveSharedReview } from '../utils/saveSharedReview'
 
 const command = {
   data: { name: 'quoteReview' },

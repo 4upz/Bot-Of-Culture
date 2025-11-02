@@ -2,145 +2,13 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ModalActionRowComponentBuilder,
-  ModalBuilder,
   StringSelectMenuInteraction,
-  TextInputBuilder,
-  TextInputStyle,
 } from 'discord.js'
 import { BotClient } from '../../../Bot'
 import { ReviewType } from '../../../utils/types'
-import { createReviewEmbed } from '../utils'
+import { createReviewEmbed, getShareQuoteCount } from './index'
 
-const command = {
-  data: { name: 'shareMode' },
-  execute: handleShareMode,
-}
-
-async function handleShareMode(interaction: StringSelectMenuInteraction) {
-  const params = interaction.customId.split('_')
-  const type = params[1] as ReviewType
-  const mediaId = params[3]
-  const originalUserId = params[4]
-  const mode = interaction.values[0] // 'exact' or 'quote'
-
-  const bot = interaction.client as BotClient
-  const collection = bot.getCollection(type)
-
-  try {
-    // Fetch the original review to share
-    const originalReview = await collection.findFirst({
-      where: {
-        userId: originalUserId,
-        [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
-      },
-    })
-
-    if (!originalReview) {
-      await interaction.reply({
-        content: 'Sorry, the original review could not be found.',
-        ephemeral: true,
-      })
-      return
-    }
-
-    // Check if the current user already has a review
-    const existingReview = await collection.findFirst({
-      where: {
-        userId: interaction.user.id,
-        [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
-      },
-    })
-
-    if (mode === 'exact') {
-      // For exact share, save immediately after confirmation
-      if (existingReview) {
-        // Show confirmation dialog
-        const actionRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(
-              `confirmShare_${type}_button_${mediaId}_${originalUserId}_exact`,
-            )
-            .setLabel('Yes, replace my review')
-            .setStyle(ButtonStyle.Danger),
-          new ButtonBuilder()
-            .setCustomId('cancelShare')
-            .setLabel('Cancel')
-            .setStyle(ButtonStyle.Secondary),
-        )
-
-        await interaction.update({
-          content: `You already have a review for this ${type}. This will replace your existing review with a score of ${originalReview.score} stars. Continue?`,
-          components: [actionRow as any],
-        })
-      } else {
-        // No existing review, create immediately
-        await saveSharedReview(
-          interaction,
-          type,
-          mediaId,
-          originalReview,
-          false,
-          undefined,
-          interaction.message,
-        )
-      }
-    } else if (mode === 'quote') {
-      // Show modal with original comment as reference
-      const modal = new ModalBuilder()
-        .setCustomId(`quoteReview_${type}_modal_${mediaId}_${originalUserId}`)
-        .setTitle('Quote Review')
-
-      const commentInput = new TextInputBuilder()
-        .setCustomId('reviewCommentInput')
-        .setLabel('Your comment')
-        .setPlaceholder('Add your thoughts here...')
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true)
-
-      if (existingReview && existingReview.comment) {
-        commentInput.setValue(existingReview.comment)
-      }
-
-      const actionRow =
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
-          commentInput,
-        )
-
-      modal.addComponents(actionRow)
-
-      // Add a second row showing the original comment as reference
-      const referenceInput = new TextInputBuilder()
-        .setCustomId('originalCommentReference')
-        .setLabel(`Original review by ${originalReview.username}`)
-        .setValue(
-          originalReview.comment || '*No comment from original review*',
-        )
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(false)
-
-      const referenceRow =
-        new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
-          referenceInput,
-        )
-
-      modal.addComponents(referenceRow)
-
-      await interaction.showModal(modal)
-      await interaction.deleteReply()
-    }
-  } catch (error) {
-    console.error('[Share Mode] Error:', error)
-    await interaction.reply({
-      content: 'Sorry, something went wrong while processing your request.',
-      ephemeral: true,
-    })
-  }
-}
-
-async function saveSharedReview(
+export async function saveSharedReview(
   interaction: StringSelectMenuInteraction | any,
   type: ReviewType,
   mediaId: string,
@@ -234,7 +102,6 @@ async function saveSharedReview(
         review.comment = '*No comment added*'
       }
 
-      const { getShareQuoteCount } = await import('../utils')
       const shareQuoteCount = await getShareQuoteCount(
         type,
         mediaId,
@@ -266,7 +133,7 @@ async function saveSharedReview(
 
       const addReviewButton = new ButtonBuilder()
         .setCustomId(`addNewReview_${type}_button_${mediaId}`)
-        .setLabel('New review')
+        .setLabel('Create separate review')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('✨')
 
@@ -295,7 +162,6 @@ async function saveSharedReview(
         })
 
         // Update the original message's embed with new share count
-        const { getShareQuoteCount } = await import('../utils')
         const updatedShareCount = await getShareQuoteCount(
           type,
           mediaId,
@@ -334,7 +200,7 @@ async function saveSharedReview(
 
         const addReviewButton = new ButtonBuilder()
           .setCustomId(`addNewReview_${type}_button_${mediaId}`)
-          .setLabel('New review')
+          .setLabel('Create separate review')
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('✨')
 
@@ -361,6 +227,3 @@ async function saveSharedReview(
     )
   }
 }
-
-export { saveSharedReview }
-export default command
