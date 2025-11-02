@@ -1,6 +1,8 @@
 import needle, { BodyData } from 'needle'
 import { MusicSearchResult, SearchResult } from 'src/utils/types'
 import Service from './Service'
+import { cache, CacheTTL } from '../utils/cache'
+import { logger } from '../utils/logger'
 
 export default class MusicService extends Service {
   private readonly clientId: string
@@ -48,6 +50,18 @@ export default class MusicService extends Service {
   }
 
   async search(query: string): Promise<SearchResult[]> {
+    const startTime = Date.now()
+    const cacheKey = { query }
+
+    // Check cache first
+    const cached = await cache.get<SearchResult[]>('MusicService', 'search', cacheKey)
+    if (cached) {
+      const latency = Date.now() - startTime
+      await logger.logApiCall('MusicService', 'search', latency, true, { query })
+      return cached
+    }
+
+    // Cache miss - call API
     const endpoint = `${this.baseURL}/search`
     const params: BodyData = {
       q: query,
@@ -60,7 +74,7 @@ export default class MusicService extends Service {
       params,
     ).then((response) => response.albums.items)
 
-    return results.map((album) => ({
+    const searchResults = results.map((album) => ({
       id: album.id,
       title: album.name,
       description: `${
@@ -70,14 +84,35 @@ export default class MusicService extends Service {
       date: album.release_date,
       artist: album.artists[0].name,
     }))
+
+    // Store in cache
+    await cache.set('MusicService', 'search', cacheKey, searchResults, CacheTTL.SEARCH_RESULTS)
+
+    // Log API call
+    const latency = Date.now() - startTime
+    await logger.logApiCall('MusicService', 'search', latency, false, { query })
+
+    return searchResults
   }
 
   async getById(id: string): Promise<MusicSearchResult> {
+    const startTime = Date.now()
+    const cacheKey = { id }
+
+    // Check cache first
+    const cached = await cache.get<MusicSearchResult>('MusicService', 'getById', cacheKey)
+    if (cached) {
+      const latency = Date.now() - startTime
+      await logger.logApiCall('MusicService', 'getById', latency, true, { id })
+      return cached
+    }
+
+    // Cache miss - call API
     const endpoint = `${this.baseURL}/albums/${id}`
 
     const result: any = await this.fetchRequestWithRetry(endpoint)
 
-    return {
+    const musicResult = {
       id: result.id,
       title: result.name,
       description: `${
@@ -90,6 +125,15 @@ export default class MusicService extends Service {
       link: result.external_urls.spotify,
       albumType: result.album_type,
     }
+
+    // Store in cache
+    await cache.set('MusicService', 'getById', cacheKey, musicResult, CacheTTL.MEDIA_DETAILS)
+
+    // Log API call
+    const latency = Date.now() - startTime
+    await logger.logApiCall('MusicService', 'getById', latency, false, { id })
+
+    return musicResult
   }
 
   /**

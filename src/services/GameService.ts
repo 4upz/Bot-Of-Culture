@@ -2,6 +2,8 @@ import dotenv from 'dotenv'
 import Service from './Service'
 import needle from 'needle'
 import { GameSearchResult, SearchResult } from '../utils/types'
+import { cache, CacheTTL } from '../utils/cache'
+import { logger } from '../utils/logger'
 
 dotenv.config()
 
@@ -37,6 +39,18 @@ export default class GameService extends Service {
   }
 
   async search(query: string): Promise<SearchResult[]> {
+    const startTime = Date.now()
+    const cacheKey = { query }
+
+    // Check cache first
+    const cached = await cache.get<SearchResult[]>('GameService', 'search', cacheKey)
+    if (cached) {
+      const latency = Date.now() - startTime
+      await logger.logApiCall('GameService', 'search', latency, true, { query })
+      return cached
+    }
+
+    // Cache miss - call API
     const request = `search "${query}";\n`
     const results = await this.fetchRequest(request)
 
@@ -45,7 +59,7 @@ export default class GameService extends Service {
       return []
     }
 
-    return results.map((result: any) => ({
+    const searchResults = results.map((result: any) => ({
       id: result.id,
       title: result.name,
       description: '',
@@ -54,9 +68,30 @@ export default class GameService extends Service {
         ? result.release_dates[0].y?.toString()
         : 'N/A',
     }))
+
+    // Store in cache
+    await cache.set('GameService', 'search', cacheKey, searchResults, CacheTTL.SEARCH_RESULTS)
+
+    // Log API call
+    const latency = Date.now() - startTime
+    await logger.logApiCall('GameService', 'search', latency, false, { query })
+
+    return searchResults
   }
 
   async getById(id: string): Promise<GameSearchResult> {
+    const startTime = Date.now()
+    const cacheKey = { id }
+
+    // Check cache first
+    const cached = await cache.get<GameSearchResult>('GameService', 'getById', cacheKey)
+    if (cached) {
+      const latency = Date.now() - startTime
+      await logger.logApiCall('GameService', 'getById', latency, true, { id })
+      return cached
+    }
+
+    // Cache miss - call API
     const request = `where id = ${id};`
     const results: any[] = await this.fetchRequest(request)
     const game = results[0]
@@ -67,7 +102,8 @@ export default class GameService extends Service {
     const publisher = game.involved_companies
       ? game.involved_companies.find((company: any) => company.publisher)
       : 'N/A'
-    return {
+
+    const gameResult = {
       id: game.id,
       title: game.name,
       description: game.summary,
@@ -83,6 +119,15 @@ export default class GameService extends Service {
       rating: Math.floor(game.aggregated_rating),
       ratingCount: game.aggregated_rating_count,
     }
+
+    // Store in cache
+    await cache.set('GameService', 'getById', cacheKey, gameResult, CacheTTL.MEDIA_DETAILS)
+
+    // Log API call
+    const latency = Date.now() - startTime
+    await logger.logApiCall('GameService', 'getById', latency, false, { id })
+
+    return gameResult
   }
 
   /**
