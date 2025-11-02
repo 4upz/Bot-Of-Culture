@@ -4,16 +4,15 @@ import { ReviewType } from '../../../utils/types'
 import { saveSharedReview } from './shareMode'
 
 const command = {
-  data: { name: 'confirmShare' },
-  execute: handleConfirmShare,
+  data: { name: 'confirmCosign' },
+  execute: handleConfirmCosign,
 }
 
-async function handleConfirmShare(interaction: MessageComponentInteraction) {
+async function handleConfirmCosign(interaction: MessageComponentInteraction) {
   const params = interaction.customId.split('_')
   const type = params[1] as ReviewType
   const mediaId = params[3]
   const originalUserId = params[4]
-  const mode = params[5] // 'exact'
 
   const bot = interaction.client as BotClient
   const collection = bot.getCollection(type)
@@ -37,7 +36,6 @@ async function handleConfirmShare(interaction: MessageComponentInteraction) {
     }
 
     // Find the original review message in the channel
-    // We'll search recent messages for one with a Share button matching this review
     let originalMessage
     try {
       const messages = await interaction.channel.messages.fetch({ limit: 50 })
@@ -52,10 +50,10 @@ async function handleConfirmShare(interaction: MessageComponentInteraction) {
         return hasButton
       })
     } catch (error) {
-      console.error('[Confirm Share] Could not find original message:', error)
+      console.error('[Confirm Cosign] Could not find original message:', error)
     }
 
-    // Save the shared review (exact mode, not quote)
+    // Save the co-signed review
     await saveSharedReview(
       interaction,
       type,
@@ -66,7 +64,7 @@ async function handleConfirmShare(interaction: MessageComponentInteraction) {
       originalMessage,
     )
   } catch (error) {
-    console.error('[Confirm Share] Error:', error)
+    console.error('[Confirm Cosign] Error:', error)
     await interaction.reply({
       content: 'Sorry, something went wrong.',
       ephemeral: true,

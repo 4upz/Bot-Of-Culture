@@ -1,7 +1,8 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   MessageComponentInteraction,
-  SelectMenuBuilder,
 } from 'discord.js'
 
 const command = {
@@ -25,27 +26,20 @@ async function handleShareReview(interaction: MessageComponentInteraction) {
   }
 
   const actionRow = new ActionRowBuilder().addComponents(
-    new SelectMenuBuilder()
-      .setCustomId(`shareMode_${type}_select_${mediaId}_${originalUserId}`)
-      .setPlaceholder('Choose how to share this review')
-      .addOptions([
-        {
-          label: 'Co-sign',
-          description: 'Add this exact score to your review',
-          value: 'exact',
-          emoji: '✍️',
-        },
-        {
-          label: 'Quote Review',
-          description: 'Share score and add your own comment',
-          value: 'quote',
-          emoji: '💬',
-        },
-      ]),
+    new ButtonBuilder()
+      .setCustomId(`cosignReview_${type}_button_${mediaId}_${originalUserId}`)
+      .setLabel('Co-sign')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('✍️'),
+    new ButtonBuilder()
+      .setCustomId(`quoteReviewButton_${type}_button_${mediaId}_${originalUserId}`)
+      .setLabel('Quote')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('💬'),
   )
 
   await interaction.reply({
-    content: 'How would you like to share this review?',
+    content: 'How would you like to add to this review?',
     components: [actionRow as any],
     ephemeral: true,
   })

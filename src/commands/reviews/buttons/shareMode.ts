@@ -4,7 +4,7 @@ import {
   ButtonStyle,
   ModalActionRowComponentBuilder,
   ModalBuilder,
-  SelectMenuInteraction,
+  StringSelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js'
@@ -17,7 +17,7 @@ const command = {
   execute: handleShareMode,
 }
 
-async function handleShareMode(interaction: SelectMenuInteraction) {
+async function handleShareMode(interaction: StringSelectMenuInteraction) {
   const params = interaction.customId.split('_')
   const type = params[1] as ReviewType
   const mediaId = params[3]
@@ -83,6 +83,8 @@ async function handleShareMode(interaction: SelectMenuInteraction) {
           mediaId,
           originalReview,
           false,
+          undefined,
+          interaction.message,
         )
       }
     } else if (mode === 'quote') {
@@ -139,12 +141,13 @@ async function handleShareMode(interaction: SelectMenuInteraction) {
 }
 
 async function saveSharedReview(
-  interaction: SelectMenuInteraction | any,
+  interaction: StringSelectMenuInteraction | any,
   type: ReviewType,
   mediaId: string,
   originalReview: any,
   isQuote: boolean,
   userComment?: string,
+  originalMessage?: any,
 ) {
   const bot = interaction.client as BotClient
   const collection = bot.getCollection(type)
@@ -156,6 +159,7 @@ async function saveSharedReview(
     score: originalReview.score,
     sharedFromUserId: originalReview.userId,
     sharedFromUsername: originalReview.username,
+    sharedFromComment: originalReview.comment,
     isQuote,
   }
 
@@ -176,7 +180,14 @@ async function saveSharedReview(
   }
 
   try {
-    await interaction.deferReply({ ephemeral: true })
+    // Defer or update depending on interaction type
+    if (interaction.deferred || interaction.replied) {
+      // Already deferred or replied, we'll edit later
+    } else if (interaction.isButton()) {
+      await interaction.deferUpdate()
+    } else {
+      await interaction.deferReply({ ephemeral: true })
+    }
 
     // Check if review exists and update or create
     const existingReview = await collection.findFirst({
@@ -212,44 +223,145 @@ async function saveSharedReview(
       reviewTarget = await bot.movies.getSeriesById(mediaId)
     }
 
-    if (!review.comment) review.comment = '*No comment added*'
+    if (!reviewTarget) {
+      await interaction.editReply(
+        'Sorry, could not retrieve media details for this review.',
+      )
+      return
+    }
 
-    // Calculate share/quote count for this review
-    const { getShareQuoteCount } = await import('../utils')
-    const shareQuoteCount = await getShareQuoteCount(
-      type,
-      mediaId,
-      review.userId,
-      interaction.guildId,
-      bot,
-    )
+    if (isQuote) {
+      // For quotes: Full broadcast as a new review
+      if (!review.comment) {
+        review.comment = '*No comment added*'
+      }
 
-    const reviewInfoEmbed = createReviewEmbed(
-      review,
-      reviewTarget,
-      interaction.user.avatarURL(),
-      type,
-      false,
-      shareQuoteCount,
-    )
+      const { getShareQuoteCount } = await import('../utils')
+      const shareQuoteCount = await getShareQuoteCount(
+        type,
+        mediaId,
+        review.userId,
+        interaction.guildId,
+        bot,
+      )
 
-    // Add Share button to the broadcast
-    const shareButton = new ButtonBuilder()
-      .setCustomId(`shareReview_${type}_button_${mediaId}_${review.userId}`)
-      .setLabel('Share This Review')
-      .setStyle(ButtonStyle.Primary)
+      const reviewInfoEmbed = createReviewEmbed(
+        review,
+        reviewTarget,
+        interaction.user.avatarURL(),
+        type,
+        false,
+        shareQuoteCount,
+      )
 
-    const actionRow = new ActionRowBuilder().addComponents(shareButton)
+      const cosignButton = new ButtonBuilder()
+        .setCustomId(`cosignReview_${type}_button_${mediaId}_${review.userId}`)
+        .setLabel('Co-sign')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('✍️')
 
-    const action = statusReply.includes('updated') ? 'updated' : 'created'
-    const shareType = isQuote ? 'quoted' : 'shared'
-    await interaction.channel.send({
-      content: `<@${review.userId}> just ${action} a review by ${shareType === 'shared' ? 'sharing' : 'quoting'} <@${originalReview.userId}>'s ${shareType === 'shared' ? 'score' : 'review'} for a${type === 'music' ? 'n album/single' : ` ${type}`}!`,
-      embeds: [reviewInfoEmbed as any],
-      components: [actionRow as any],
-    })
+      const quoteButton = new ButtonBuilder()
+        .setCustomId(`quoteReviewButton_${type}_button_${mediaId}_${review.userId}`)
+        .setLabel('Quote')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('💬')
 
-    await interaction.editReply(statusReply)
+      const addReviewButton = new ButtonBuilder()
+        .setCustomId(`addNewReview_${type}_button_${mediaId}`)
+        .setLabel('New review')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('✨')
+
+      const actionRow = new ActionRowBuilder().addComponents(
+        cosignButton,
+        quoteButton,
+        addReviewButton,
+      )
+
+      const action = statusReply.includes('updated') ? 'updated' : 'created'
+      await interaction.channel.send({
+        content: `<@${review.userId}> just ${action} a review by quoting <@${originalReview.userId}>'s review for a${type === 'music' ? 'n album/single' : ` ${type}`}!`,
+        embeds: [reviewInfoEmbed as any],
+        components: [actionRow as any],
+      })
+
+      await interaction.editReply(statusReply)
+    } else {
+      // For co-signs: Reply to original review and update its embed
+      review.comment = null
+
+      // Reply to the original message
+      if (originalMessage) {
+        await originalMessage.reply({
+          content: `<@${review.userId}> co-signed this review!`,
+        })
+
+        // Update the original message's embed with new share count
+        const { getShareQuoteCount } = await import('../utils')
+        const updatedShareCount = await getShareQuoteCount(
+          type,
+          mediaId,
+          originalReview.userId,
+          interaction.guildId,
+          bot,
+        )
+
+        // Get the original user's avatar
+        const originalUser = await bot.users.fetch(originalReview.userId)
+        const updatedEmbed = createReviewEmbed(
+          originalReview,
+          reviewTarget,
+          originalUser.avatarURL(),
+          type,
+          false,
+          updatedShareCount,
+        )
+
+        // Keep the existing buttons
+        const cosignButton = new ButtonBuilder()
+          .setCustomId(
+            `cosignReview_${type}_button_${mediaId}_${originalReview.userId}`,
+          )
+          .setLabel('Co-sign')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('✍️')
+
+        const quoteButton = new ButtonBuilder()
+          .setCustomId(
+            `quoteReviewButton_${type}_button_${mediaId}_${originalReview.userId}`,
+          )
+          .setLabel('Quote')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('💬')
+
+        const addReviewButton = new ButtonBuilder()
+          .setCustomId(`addNewReview_${type}_button_${mediaId}`)
+          .setLabel('New review')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('✨')
+
+        const actionRow = new ActionRowBuilder().addComponents(
+          cosignButton,
+          quoteButton,
+          addReviewButton,
+        )
+
+        await originalMessage.edit({
+          embeds: [updatedEmbed as any],
+          components: [actionRow as any],
+        })
+      }
+
+      // Edit the ephemeral message to show success
+      if (interaction.isButton() && interaction.message.flags.has('Ephemeral')) {
+        await interaction.editReply({
+          content: statusReply,
+          components: [],
+        })
+      } else {
+        await interaction.editReply(statusReply)
+      }
+    }
   } catch (error) {
     console.error('[Save Shared Review] Error:', error)
     await interaction.editReply(
