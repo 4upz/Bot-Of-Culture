@@ -9,8 +9,8 @@ import {
   ModalActionRowComponentBuilder,
   ModalBuilder,
   ModalSubmitInteraction,
-  SelectMenuBuilder,
-  SelectMenuInteraction,
+  StringSelectMenuBuilder,
+  StringSelectMenuInteraction,
   TextInputBuilder,
   TextInputStyle,
 } from 'discord.js'
@@ -171,7 +171,7 @@ export async function promptReview(interaction: MessageComponentInteraction) {
     if (type === 'game') choices = gameReviewChoices
     if (type === 'music') choices = musicReviewChoices
     const actionRow = new ActionRowBuilder().addComponents(
-      new SelectMenuBuilder()
+      new StringSelectMenuBuilder()
         .setCustomId(`reviewScore_${type}_button_${targetId}`)
         .addOptions(...(choices as any)),
     )
@@ -186,7 +186,7 @@ export async function promptReview(interaction: MessageComponentInteraction) {
   }
 }
 
-export async function promptReviewComment(interaction: SelectMenuInteraction) {
+export async function promptReviewComment(interaction: StringSelectMenuInteraction) {
   const params = interaction.customId.split('_')
   const targetId = params[3]
   const reviewScore = params[4]
@@ -217,7 +217,7 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(true)
 
-  if (existingReview)
+  if (existingReview && existingReview.comment)
     commentInput = commentInput.setValue(existingReview.comment)
 
   const actionRow =
@@ -277,7 +277,7 @@ export async function promptReviewComment(interaction: SelectMenuInteraction) {
 }
 
 export async function saveReview(
-  interaction: SelectMenuInteraction | ModalSubmitInteraction,
+  interaction: StringSelectMenuInteraction | ModalSubmitInteraction,
 ) {
   let comment
   const params = interaction.customId.split('_')
@@ -375,13 +375,30 @@ export async function saveReview(
       shareQuoteCount,
     )
 
-    // Add Share button to the broadcast
-    const shareButton = new ButtonBuilder()
-      .setCustomId(`shareReview_${type}_button_${data[`${type}Id`]}_${review.userId}`)
-      .setLabel('Share This Review')
+    // Add Co-sign, Quote, and New review buttons to the broadcast
+    const cosignButton = new ButtonBuilder()
+      .setCustomId(`cosignReview_${type}_button_${data[`${type}Id`]}_${review.userId}`)
+      .setLabel('Co-sign')
       .setStyle(ButtonStyle.Primary)
+      .setEmoji('✍️')
 
-    const actionRow = new ActionRowBuilder().addComponents(shareButton)
+    const quoteButton = new ButtonBuilder()
+      .setCustomId(`quoteReviewButton_${type}_button_${data[`${type}Id`]}_${review.userId}`)
+      .setLabel('Quote')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('💬')
+
+    const addReviewButton = new ButtonBuilder()
+      .setCustomId(`addNewReview_${type}_button_${data[`${type}Id`]}`)
+      .setLabel('New review')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('✨')
+
+    const actionRow = new ActionRowBuilder().addComponents(
+      cosignButton,
+      quoteButton,
+      addReviewButton,
+    )
 
     const action = statusReply.includes('updated') ? 'updated' : 'created'
     await interaction.channel.send({
@@ -491,7 +508,11 @@ export function createReviewEmbed(
       name: review.username,
       iconURL: userAvatar,
     })
-    .setDescription(review.comment)
+
+  // Only set description if there's a comment
+  if (review.comment) {
+    embed.setDescription(review.comment)
+  }
 
   if (type === 'game')
     embed.addFields([
@@ -510,12 +531,9 @@ export function createReviewEmbed(
         inline: true,
       },
     ])
-    if (!truncated)
-      embed.setURL((<MusicSearchResult>reviewTarget).link).setFooter({
-        text: 'Click to open the title on Spotify',
-        iconURL:
-          'https://developer.spotify.com/assets/branding-guidelines/icon3@2x.png',
-      })
+    if (!truncated) {
+      embed.setURL((<MusicSearchResult>reviewTarget).link)
+    }
   }
 
   embed.addFields([{ name: 'Score', value: formattedScore }])
@@ -523,7 +541,13 @@ export function createReviewEmbed(
   // Add attribution field if this review was shared or quoted
   if ((review as any).sharedFromUserId) {
     const shareType = (review as any).isQuote ? 'Quoted' : 'Shared'
-    const attributionText = `${shareType} from <@${(review as any).sharedFromUserId}>'s review`
+    let attributionText = `${shareType} from <@${(review as any).sharedFromUserId}>'s review`
+
+    // For quoted reviews, show the original comment
+    if ((review as any).isQuote && (review as any).sharedFromComment) {
+      attributionText += `\n\n*"${(review as any).sharedFromComment}"*`
+    }
+
     embed.addFields([
       {
         name: shareType === 'Quoted' ? '💬 Quoted From' : '👍 Shared From',
@@ -533,7 +557,7 @@ export function createReviewEmbed(
     ])
   }
 
-  // Add share/quote count if this is an original review that others have shared
+  // Add share/quote count to footer if this is an original review that others have shared
   if (shareQuoteCount && shareQuoteCount.total > 0) {
     const countParts = []
     if (shareQuoteCount.shareCount > 0) {
@@ -546,13 +570,21 @@ export function createReviewEmbed(
         `${shareQuoteCount.quoteCount} quote${shareQuoteCount.quoteCount !== 1 ? 's' : ''}`,
       )
     }
-    embed.addFields([
-      {
-        name: '📊 Impact',
-        value: countParts.join(' • '),
-        inline: true,
-      },
-    ])
+
+    const shareText = `📊 ${countParts.join(' • ')}`
+
+    // For music reviews, append to existing footer; for others, set as footer
+    if (type === 'music' && !truncated) {
+      embed.setFooter({
+        text: `Click to open the title on Spotify | ${shareText}`,
+        iconURL:
+          'https://developer.spotify.com/assets/branding-guidelines/icon3@2x.png',
+      })
+    } else {
+      embed.setFooter({
+        text: shareText,
+      })
+    }
   }
 
   // We only show these extra details when not using the truncated (shortened) embed
@@ -572,6 +604,15 @@ export function createReviewEmbed(
           inline: true,
         },
       ])
+
+  // Add Spotify footer for music reviews if no share count was added
+  if (type === 'music' && !truncated && (!shareQuoteCount || shareQuoteCount.total === 0)) {
+    embed.setFooter({
+      text: 'Click to open the title on Spotify',
+      iconURL:
+        'https://developer.spotify.com/assets/branding-guidelines/icon3@2x.png',
+    })
+  }
 
   return embed
 }

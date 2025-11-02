@@ -29,6 +29,7 @@ model MovieReview {
   createdAt DateTime @default(now()) @map("_createdAt")
   sharedFromUserId String?
   sharedFromUsername String?
+  sharedFromComment String?
   isQuote Boolean @default(false)
 
   @@index([movieId, guildId, userId])
@@ -45,6 +46,7 @@ model SeriesReview {
   createdAt DateTime @default(now()) @map("_createdAt")
   sharedFromUserId String?
   sharedFromUsername String?
+  sharedFromComment String?
   isQuote Boolean @default(false)
 
   @@index([seriesId, guildId, userId])
@@ -62,6 +64,7 @@ model GameReview {
   createdAt DateTime @default(now()) @map("_createdAt")
   sharedFromUserId String?
   sharedFromUsername String?
+  sharedFromComment String?
   isQuote Boolean @default(false)
 
   @@index([gameId, guildId, userId])
@@ -85,6 +88,7 @@ model MusicReview {
   createdAt DateTime @default(now()) @map("_createdAt")
   sharedFromUserId String?
   sharedFromUsername String?
+  sharedFromComment String?
   isQuote Boolean @default(false)
 
   @@index([musicId, guildId, userId])
