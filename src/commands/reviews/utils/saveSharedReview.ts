@@ -133,7 +133,7 @@ export async function saveSharedReview(
 
       const addReviewButton = new ButtonBuilder()
         .setCustomId(`addNewReview_${type}_button_${mediaId}`)
-        .setLabel('Create separate review')
+        .setLabel('New review')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('✨')
 
@@ -200,7 +200,7 @@ export async function saveSharedReview(
 
         const addReviewButton = new ButtonBuilder()
           .setCustomId(`addNewReview_${type}_button_${mediaId}`)
-          .setLabel('Create separate review')
+          .setLabel('New review')
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('✨')
 
