@@ -6,7 +6,7 @@ import {
 } from 'discord.js'
 import { BotClient } from '../../../Bot'
 import { ReviewType } from '../../../utils/types'
-import { saveSharedReview } from './shareMode'
+import { saveSharedReview } from '../utils/saveSharedReview'
 
 const command = {
   data: { name: 'cosignReview' },
