@@ -23,12 +23,12 @@ export async function saveSharedReview(
   const data: any = {
     userId: interaction.user.id,
     username: interaction.user.username,
-    guildId: interaction.guildId,
     score: originalReview.score,
     sharedFromUserId: originalReview.userId,
     sharedFromUsername: originalReview.username,
     sharedFromComment: originalReview.comment,
     isQuote,
+    isPrivate: false, // Shared reviews are always global
   }
 
   data[`${type}Id`] = mediaId
@@ -55,12 +55,11 @@ export async function saveSharedReview(
       await interaction.deferReply({ ephemeral: true })
     }
 
-    // Check if review exists and update or create
+    // Check if review exists and update or create (global lookup)
     const existingReview = await collection.findFirst({
       where: {
         userId: interaction.user.id,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 
@@ -106,7 +105,6 @@ export async function saveSharedReview(
         type,
         mediaId,
         review.userId,
-        interaction.guildId,
         bot,
       )
 
@@ -161,12 +159,11 @@ export async function saveSharedReview(
           content: `<@${review.userId}> co-signed this review!`,
         })
 
-        // Update the original message's embed with new share count
+        // Update the original message's embed with new share count (global)
         const updatedShareCount = await getShareQuoteCount(
           type,
           mediaId,
           originalReview.userId,
-          interaction.guildId,
           bot,
         )
 

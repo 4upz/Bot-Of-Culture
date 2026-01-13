@@ -146,7 +146,7 @@ async function getSearchResultInfo(interaction: MessageComponentInteraction) {
     }
 
     resultInfoEmbed = resultInfoEmbed.addFields([
-      { name: 'Server Score', value: scoreDisplay, inline: true },
+      { name: 'Global Score', value: scoreDisplay, inline: true },
     ])
 
     if (resultType === 'game') {
@@ -207,10 +207,14 @@ export async function getReviewsForType(
   bot: BotClient,
 ): Promise<IReview[]> {
   const collection = bot.getCollection(type as ReviewType)
+  // Get all global reviews (not private) plus private reviews from this server
   return await collection.findMany({
     where: {
       [`${type}Id`]: id,
-      guildId,
+      OR: [
+        { isPrivate: false },
+        { isPrivate: true, guildId },
+      ],
     },
   })
 }

@@ -23,12 +23,11 @@ async function handleCosignReview(interaction: MessageComponentInteraction) {
   const collection = bot.getCollection(type)
 
   try {
-    // Fetch the original review
+    // Fetch the original review (global lookup)
     const originalReview = await collection.findFirst({
       where: {
         userId: originalUserId,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 
@@ -40,12 +39,11 @@ async function handleCosignReview(interaction: MessageComponentInteraction) {
       return
     }
 
-    // Check if the current user already has a review
+    // Check if the current user already has a review (global)
     const existingReview = await collection.findFirst({
       where: {
         userId: interaction.user.id,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 

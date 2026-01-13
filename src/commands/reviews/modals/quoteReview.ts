@@ -31,12 +31,11 @@ async function handleQuoteReview(interaction: ModalSubmitInteraction) {
       return
     }
 
-    // Fetch the original review
+    // Fetch the original review (global lookup)
     const originalReview = await collection.findFirst({
       where: {
         userId: originalUserId,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 

@@ -50,7 +50,6 @@ async function saveMovieReview(
     where: {
       userId: data.userId,
       movieId: data.movieId,
-      guildId: data.guildId,
     },
   })
 
@@ -77,7 +76,6 @@ async function saveSeriesReview(
     where: {
       userId: data.userId,
       seriesId: data.seriesId,
-      guildId: data.guildId,
     },
   })
 
@@ -104,7 +102,6 @@ async function saveGameReview(
     where: {
       userId: data.userId,
       gameId: data.gameId,
-      guildId: data.guildId,
     },
   })
 
@@ -131,7 +128,6 @@ async function saveMusicReview(
     where: {
       userId: data.userId,
       musicId: data.musicId,
-      guildId: data.guildId,
     },
   })
 
@@ -199,7 +195,6 @@ export async function promptReviewComment(interaction: StringSelectMenuInteracti
     .findFirst({
       where: {
         userId: interaction.user.id,
-        guildId: interaction.guildId,
         [`${type}Id`]: targetId,
       },
     })
@@ -272,6 +267,24 @@ export async function promptReviewComment(interaction: StringSelectMenuInteracti
     )
   }
 
+  // Add option for private/server-only review
+  let privateInput = new TextInputBuilder()
+    .setCustomId('reviewPrivateInput')
+    .setLabel('Server only? (yes/no)')
+    .setMaxLength(3)
+    .setPlaceholder('no')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+
+  if (existingReview && existingReview.isPrivate)
+    privateInput = privateInput.setValue('yes')
+
+  modal.addComponents(
+    new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(
+      privateInput,
+    ),
+  )
+
   await interaction.showModal(modal)
   await interaction.deleteReply()
 }
@@ -289,12 +302,24 @@ export async function saveReview(
   if (interaction.isModalSubmit())
     comment = interaction.fields.getTextInputValue('reviewCommentInput')
 
-  const data: { [key: string]: string | number } = {
+  // Check if review should be private (server-only)
+  let isPrivate = false
+  if (interaction.isModalSubmit()) {
+    const privateInput = interaction.fields.getTextInputValue('reviewPrivateInput')
+    isPrivate = privateInput?.toLowerCase() === 'yes'
+  }
+
+  const data: { [key: string]: string | number | boolean } = {
     userId: interaction.user.id,
     username: interaction.user.username,
-    guildId: interaction.guildId,
     score: parseInt(params[4]),
     comment,
+    isPrivate,
+  }
+
+  // Only set guildId if review is private (server-only)
+  if (isPrivate) {
+    data.guildId = interaction.guildId
   }
 
   // Assign ID key by asserting from type
@@ -357,12 +382,11 @@ export async function saveReview(
 
     if (!comment) review.comment = '*No comment added*'
 
-    // Calculate share/quote count for this review
+    // Calculate share/quote count for this review (global)
     const shareQuoteCount = await getShareQuoteCount(
       type as ReviewType,
       data[`${type}Id`].toString(),
       review.userId,
-      interaction.guildId,
       bot,
     )
 
@@ -632,15 +656,14 @@ export async function getShareQuoteCount(
   type: ReviewType,
   mediaId: string,
   userId: string,
-  guildId: string,
   bot: BotClient,
 ) {
   const collection = bot.getCollection(type)
 
+  // Get all shares/quotes globally (not scoped to guild)
   const sharedReviews = await collection.findMany({
     where: {
       [`${type}Id`]: mediaId,
-      guildId,
       sharedFromUserId: userId,
     },
   })

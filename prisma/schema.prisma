@@ -21,7 +21,7 @@ model RPSGame {
 model MovieReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   movieId String
-  guildId String
+  guildId String?
   score Int
   comment String?
   userId String
@@ -31,14 +31,16 @@ model MovieReview {
   sharedFromUsername String?
   sharedFromComment String?
   isQuote Boolean @default(false)
+  isPrivate Boolean @default(false)
 
-  @@index([movieId, guildId, userId])
+  @@unique([movieId, userId])
+  @@index([movieId])
 }
 
 model SeriesReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   seriesId String
-  guildId String
+  guildId String?
   score Int
   comment String?
   userId String
@@ -48,14 +50,16 @@ model SeriesReview {
   sharedFromUsername String?
   sharedFromComment String?
   isQuote Boolean @default(false)
+  isPrivate Boolean @default(false)
 
-  @@index([seriesId, guildId, userId])
+  @@unique([seriesId, userId])
+  @@index([seriesId])
 }
 
 model GameReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   gameId String
-  guildId String
+  guildId String?
   score Int
   hoursPlayed Int?
   comment String?
@@ -66,8 +70,10 @@ model GameReview {
   sharedFromUsername String?
   sharedFromComment String?
   isQuote Boolean @default(false)
+  isPrivate Boolean @default(false)
 
-  @@index([gameId, guildId, userId])
+  @@unique([gameId, userId])
+  @@index([gameId])
 }
 
 enum Replayability {
@@ -79,7 +85,7 @@ enum Replayability {
 model MusicReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   musicId String
-  guildId String
+  guildId String?
   score Int
   replayability Replayability
   comment String?
@@ -90,6 +96,8 @@ model MusicReview {
   sharedFromUsername String?
   sharedFromComment String?
   isQuote Boolean @default(false)
+  isPrivate Boolean @default(false)
 
-  @@index([musicId, guildId, userId])
+  @@unique([musicId, userId])
+  @@index([musicId])
 }

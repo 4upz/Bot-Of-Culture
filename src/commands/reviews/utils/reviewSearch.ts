@@ -19,22 +19,23 @@ export async function getReviewForUser(
   const bot = interaction.client as BotClient
   const { type, userId, targetId, guildId } = params
 
+  // Global lookup - find user's review regardless of where it was created
   let review
   if (type === 'movie')
     review = await bot.db.movieReview.findFirst({
-      where: { guildId, movieId: targetId, userId },
+      where: { movieId: targetId, userId },
     })
   else if (type === 'game')
     review = await bot.db.gameReview.findFirst({
-      where: { guildId, gameId: targetId, userId },
+      where: { gameId: targetId, userId },
     })
   else if (type === 'music')
     review = await bot.db.musicReview.findFirst({
-      where: { guildId, musicId: targetId, userId },
+      where: { musicId: targetId, userId },
     })
   else
     review = await bot.db.seriesReview.findFirst({
-      where: { guildId, seriesId: targetId, userId },
+      where: { seriesId: targetId, userId },
     })
 
   if (review) {
@@ -84,25 +85,25 @@ export async function getAllReviews(
 
     if (channel.type === ChannelType.GuildText) {
       // Check and make sure there isn't an existing thread. If there is, send the reviews there.
-      thread = await findThreadByName(channel, `${targetInfo.title} Reviews`)
+      thread = await findThreadByName(channel, `${targetInfo.title} Global Reviews`)
       if (thread) {
         if (thread.archived) await thread.setArchived(false)
         await thread.send(
-          `--------------------------------------------------\nNew Reviews requested by <@${interaction.user.id}>`,
+          `--------------------------------------------------\nNew Global Reviews requested by <@${interaction.user.id}>`,
         )
         await channel.send(
-          `A new list of reviews have been added to <#${thread.id}> as requested by <@${interaction.user.id}>!`,
+          `A new list of global reviews have been added to <#${thread.id}> as requested by <@${interaction.user.id}>!`,
         )
       } else {
         // Create thread, attach it to notification message, and send all reviews
         const startMessage = await channel.send(
-          `${targetInfo.title} Reviews requested by <@${interaction.user.id}>`,
+          `${targetInfo.title} Global Reviews requested by <@${interaction.user.id}>`,
         )
         thread = await channel.threads.create({
           startMessage,
-          name: `${targetInfo.title} Reviews`,
+          name: `${targetInfo.title} Global Reviews`,
           autoArchiveDuration: ThreadAutoArchiveDuration.OneHour,
-          reason: `Server Reviews for ${targetInfo.title} requested by <@${interaction.user.id}>. This will auto-archive after one day of inactivity.`,
+          reason: `Global Reviews for ${targetInfo.title} requested by <@${interaction.user.id}>. This will auto-archive after one day of inactivity.`,
         })
       }
 

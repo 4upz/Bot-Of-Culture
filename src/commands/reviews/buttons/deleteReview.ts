@@ -13,7 +13,7 @@ async function handleDeleteReview(interaction: MessageComponentInteraction) {
   const client = interaction.client as BotClient
   const params = interaction.customId.split('_')
   const type = params[1]
-  const { user, guildId } = interaction
+  const { user } = interaction
   const targetId = params[3]
 
   await interaction.deferUpdate()
@@ -21,9 +21,9 @@ async function handleDeleteReview(interaction: MessageComponentInteraction) {
   try {
     const collection = client.getCollection(type as ReviewType)
     if (!collection) throw new Error('Invalid collection name')
-    // Grab id of review document if it exists
+    // Grab id of review document if it exists (global lookup)
     const review = await (<any>collection).findFirst({
-      where: { [`${type}Id`]: targetId, userId: user.id, guildId: guildId },
+      where: { [`${type}Id`]: targetId, userId: user.id },
     })
     if (review) {
       await (<any>collection).delete({ where: { id: review.id } })

@@ -31,13 +31,14 @@ export interface SubcommandExecutors {
 
 export interface IReview {
   id: string
-  guildId: string
+  guildId?: string
   score: number
   comment?: string
   userId: string
   username: string
   createdAt: Date
   hoursPlayed?: number
+  isPrivate?: boolean
 }
 
 export interface SearchResult {
