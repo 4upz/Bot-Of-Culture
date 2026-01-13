@@ -18,7 +18,8 @@
     "prisma:generate": "prisma generate",
     "deploy-commands": "ts-node scripts/deployCommands.ts",
     "deploy-commands:global": "ts-node scripts/deployCommands.ts global",
-    "deploy:prod": "gcloud app deploy app.yml"
+    "deploy:prod": "gcloud app deploy app.yml",
+    "migrate:global-reviews": "ts-node scripts/migrate-global-reviews.ts"
   },
   "devDependencies": {
     "@types/needle": "^2.5.3",
