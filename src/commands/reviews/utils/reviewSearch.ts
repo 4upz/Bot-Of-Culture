@@ -1,20 +1,26 @@
 import {
   ChannelType,
   EmbedBuilder,
-  MessageComponentInteraction,
   TextChannel,
   ThreadAutoArchiveDuration,
   ThreadChannel,
 } from 'discord.js'
-import { createReviewEmbed } from './index'
+import { createReviewEmbed, getByIdForType } from './index'
 import { BotClient } from '../../../Bot'
-import { getReviewsForType } from '../buttons/select'
+import { getReviewsForType } from './searchResultInfo'
 import { createOverviewEmbed } from './formatter'
-import { ReviewType } from '../../../utils/types'
+import { MediaCommandInteraction, ReviewType } from '../../../utils/types'
+
+type ReviewSearchParams = {
+  type: string
+  userId?: string
+  targetId: string
+  guildId: string
+}
 
 export async function getReviewForUser(
-  params: { [key: string]: string },
-  interaction: MessageComponentInteraction,
+  params: ReviewSearchParams,
+  interaction: MediaCommandInteraction,
 ) {
   const bot = interaction.client as BotClient
   const { type, userId, targetId, guildId } = params
@@ -38,7 +44,7 @@ export async function getReviewForUser(
     })
 
   if (review) {
-    const targetInfo = await getTargetInfo(targetId, bot, type)
+    const targetInfo = await getByIdForType(type as ReviewType, targetId, bot)
     const userAvatar = bot.guilds
       .resolve(guildId)
       .members.resolve(userId)
@@ -61,12 +67,12 @@ export async function getReviewForUser(
 }
 
 export async function getAllReviews(
-  params: { [key: string]: string },
-  interaction: MessageComponentInteraction,
+  params: ReviewSearchParams,
+  interaction: MediaCommandInteraction,
 ) {
   const { type, targetId, guildId } = params
   const bot = interaction.client as BotClient
-  const targetInfo = await getTargetInfo(targetId, bot, type)
+  const targetInfo = await getByIdForType(type as ReviewType, targetId, bot)
 
   const reviews = await getReviewsForType(type, targetId, guildId, bot)
 
@@ -134,16 +140,6 @@ export async function getAllReviews(
   })
 
   return reviews
-}
-
-async function getTargetInfo(targetId: string, bot: BotClient, type: string) {
-  let targetInfo
-  if (type === 'movie') targetInfo = await bot.movies.getById(targetId)
-  else if (type === 'game') targetInfo = await bot.games.getById(targetId)
-  else if (type === 'music') targetInfo = await bot.music.getById(targetId)
-  else targetInfo = await bot.movies.getSeriesById(targetId)
-
-  return targetInfo
 }
 
 async function findThreadByName(channel: TextChannel, name: string) {

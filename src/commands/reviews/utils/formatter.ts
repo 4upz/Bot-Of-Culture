@@ -9,7 +9,7 @@ import {
   SeriesSearchResult,
 } from '../../../utils/types'
 import { convertScoreToStars, convertToNameListString } from './index'
-import { calculatePropertyAverage } from '../buttons/select'
+import { calculatePropertyAverage } from './searchResultInfo'
 
 export async function createOverviewEmbed(
   result: SearchResult,

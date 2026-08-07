@@ -12,10 +12,12 @@ export async function handleSubcommand(
       await subcommandHandler(interaction)
     } catch (error) {
       console.log(error.message)
-      await interaction.reply({
+      const errorReply = {
         content: 'Something went wrong! Please try again later.',
         ephemeral: true,
-      })
+      }
+      if (interaction.deferred) await interaction.editReply(errorReply)
+      else if (!interaction.replied) await interaction.reply(errorReply)
     }
   else
     await interaction.reply({
