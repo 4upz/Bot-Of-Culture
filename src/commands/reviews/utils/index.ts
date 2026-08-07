@@ -31,6 +31,7 @@ import {
 import { BotClient } from '../../../Bot'
 import {
   IReview,
+  MediaCommandInteraction,
   MusicSearchResult,
   ReviewType,
   SearchResult,
@@ -150,7 +151,7 @@ async function saveMusicReview(
   }
 }
 
-async function getSearchResultsForType(
+export async function getSearchResultsForType(
   type: ReviewType,
   query: string,
   bot: BotClient,
@@ -161,26 +162,62 @@ async function getSearchResultsForType(
   else return await bot.games.search(query)
 }
 
+export async function getByIdForType(
+  type: ReviewType,
+  id: string,
+  bot: BotClient,
+) {
+  if (type === 'movie') return await bot.movies.getById(id)
+  else if (type === 'game') return await bot.games.getById(id)
+  else if (type === 'music') return await bot.music.getById(id)
+  else return await bot.movies.getSeriesById(id)
+}
+
+/**
+ * Prompts the user to pick a review score for the given target. Updates the
+ * source message when triggered from a message component, otherwise sends a
+ * new ephemeral reply
+ * @param interaction the interaction to respond to
+ * @param type        the media type being reviewed
+ * @param targetId    the ID of the media being reviewed
+ * @param options     optional note appended to the prompt, and asNewReply to
+ *                    force a new reply instead of updating the source message
+ */
+export async function sendReviewScorePrompt(
+  interaction: MediaCommandInteraction,
+  type: ReviewType,
+  targetId: string,
+  options: { note?: string; asNewReply?: boolean } = {},
+) {
+  let choices = reviewChoices
+  if (type === 'game') choices = gameReviewChoices
+  if (type === 'music') choices = musicReviewChoices
+  const actionRow = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(`reviewScore_${type}_button_${targetId}`)
+      .addOptions(...(choices as any)),
+  )
+
+  const note = options.note ? `\n${options.note}` : ''
+  const payload = {
+    content: `Awesome! What would you rate this ${
+      type === 'music' ? 'project' : type
+    }? 🤔${note}`,
+    components: [actionRow as any],
+  }
+
+  if (interaction.isMessageComponent() && !options.asNewReply)
+    await interaction.update(payload)
+  else await interaction.reply({ ...payload, ephemeral: true })
+}
+
 export async function promptReview(interaction: MessageComponentInteraction) {
   const params = interaction.customId.split('_')
   const targetId = params[3]
-  const type = params[1]
+  const type = params[1] as ReviewType
 
   try {
-    let choices = reviewChoices
-    if (type === 'game') choices = gameReviewChoices
-    if (type === 'music') choices = musicReviewChoices
-    const actionRow = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(`reviewScore_${type}_button_${targetId}`)
-        .addOptions(...(choices as any)),
-    )
-    await interaction.update({
-      content: `Awesome! What would you rate this ${
-        type === 'music' ? 'project' : type
-      }? 🤔`,
-      components: [actionRow as any],
-    })
+    await sendReviewScorePrompt(interaction, type, targetId)
   } catch (error) {
     console.error(error)
   }
@@ -432,21 +469,12 @@ export async function replyWithResults(
   if (results.length) {
     const actionRow: ActionRowBuilder<AnyComponentBuilder> =
       new ActionRowBuilder().addComponents(
-        results.map((result) => {
-          let { title, date } = result
-          if (title.length > 73) title = `${title.substring(0, 69)}...`
-
-          date = date ? dayjs(date).format('YYYY') : 'Date N/A'
-          const details =
-            type === 'music'
-              ? `${(<MusicSearchResult>result).artist}, ${date}`
-              : date
-
-          return new ButtonBuilder()
+        results.map((result) =>
+          new ButtonBuilder()
             .setCustomId(`${customIdPrefix}_button_${result.id}`)
-            .setLabel(`${title} (${details})`)
-            .setStyle(ButtonStyle.Success)
-        }),
+            .setLabel(formatSearchResultLabel(result, type, 80))
+            .setStyle(ButtonStyle.Success),
+        ),
       )
 
     const comment = additionalMessage || ''
@@ -470,6 +498,21 @@ export async function replyWithResults(
       ephemeral: true,
     })
   }
+}
+
+/**
+ * Formats a search result into a "Title (details)" display label, truncated
+ * to fit the given max length
+ */
+export function formatSearchResultLabel(
+  result: SearchResult,
+  type: ReviewType,
+  maxLength: number,
+) {
+  const date = result.date ? dayjs(result.date).format('YYYY') : 'Date N/A'
+  const details =
+    type === 'music' ? `${(<MusicSearchResult>result).artist}, ${date}` : date
+  return truncateByMaxLength(`${result.title} (${details})`, maxLength)
 }
 
 export function convertScoreToStars(

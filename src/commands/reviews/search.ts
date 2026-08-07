@@ -1,85 +1,44 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
 import { replyWithResults } from './utils'
 import { handleSubcommand } from '../utils/helpers'
+import {
+  buildMediaSubcommands,
+  createMediaExecutors,
+  getSelectedResultId,
+  searchAutocomplete,
+} from './utils/mediaSearch'
+import { sendSearchResultInfo } from './utils/searchResultInfo'
+import { ReviewType } from '../../utils/types'
 
 const command = {
-  data: new SlashCommandBuilder()
-    .setName('search')
-    .setDescription('Search for a movie')
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('movie')
-        .setDescription('Search for a movie')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the movie you wish to search')
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('series')
-        .setDescription('Search for a series')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the series you wish to search')
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('game')
-        .setDescription('Search for a game')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the game you wish to search')
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('music')
-        .setDescription('Search for an album/single')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the album/single you wish to search')
-            .setRequired(true),
-        ),
-    ),
-  execute: (interaction: ChatInputCommandInteraction) => {
-    handleSubcommand(interaction, subcommandExecutors)
-  },
+  data: buildMediaSubcommands(
+    new SlashCommandBuilder()
+      .setName('search')
+      .setDescription('Search for a movie'),
+    ({ subject }) => `Search for ${subject}`,
+    ({ noun }) => `The title of the ${noun} you wish to search`,
+  ),
+  execute: (interaction: ChatInputCommandInteraction) =>
+    handleSubcommand(interaction, subcommandExecutors),
+  autocomplete: searchAutocomplete,
 }
 
-const subcommandExecutors = {
-  movie: searchMovie,
-  series: searchSeries,
-  game: searchGames,
-  music: searchMusic,
-}
+const subcommandExecutors = createMediaExecutors(searchMedia)
 
-async function searchMovie(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'searchSelect_movie'
-  await replyWithResults(interaction, commandPrefix, '', false, 'movie')
-}
+async function searchMedia(
+  interaction: ChatInputCommandInteraction,
+  type: ReviewType,
+) {
+  const targetId = getSelectedResultId(interaction)
 
-async function searchSeries(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'searchSelect_series'
-  await replyWithResults(interaction, commandPrefix, '', false, 'series')
-}
-
-async function searchGames(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'searchSelect_game'
-  await replyWithResults(interaction, commandPrefix, '', false, 'game')
-}
-
-async function searchMusic(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'searchSelect_music'
-  await replyWithResults(interaction, commandPrefix, '', false, 'music')
+  if (targetId) {
+    await interaction.deferReply()
+    await sendSearchResultInfo(interaction, type, targetId)
+  } else {
+    // Fall back to a manual search when free text was submitted instead of
+    // an autocomplete suggestion
+    await replyWithResults(interaction, `searchSelect_${type}`, '', false, type)
+  }
 }
 
 export default command

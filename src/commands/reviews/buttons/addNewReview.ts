@@ -1,14 +1,6 @@
-import {
-  ActionRowBuilder,
-  MessageComponentInteraction,
-  StringSelectMenuBuilder,
-} from 'discord.js'
+import { MessageComponentInteraction } from 'discord.js'
 import { ReviewType } from '../../../utils/types'
-import {
-  reviewChoices,
-  gameReviewChoices,
-  musicReviewChoices,
-} from '../../utils/choices'
+import { sendReviewScorePrompt } from '../utils'
 
 const command = {
   data: { name: 'addNewReview' },
@@ -21,22 +13,8 @@ async function handleAddNewReview(interaction: MessageComponentInteraction) {
   const mediaId = params[3]
 
   try {
-    let choices = reviewChoices
-    if (type === 'game') choices = gameReviewChoices
-    if (type === 'music') choices = musicReviewChoices
-
-    const actionRow = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(`reviewScore_${type}_button_${mediaId}`)
-        .addOptions(...(choices as any)),
-    )
-
-    await interaction.reply({
-      content: `Awesome! What would you rate this ${
-        type === 'music' ? 'project' : type
-      }? 🤔`,
-      components: [actionRow as any],
-      ephemeral: true,
+    await sendReviewScorePrompt(interaction, type, mediaId, {
+      asNewReply: true,
     })
   } catch (error) {
     console.error('[Add New Review] Error:', error)

@@ -1,4 +1,5 @@
 import {
+  AutocompleteInteraction,
   BaseInteraction,
   ChatInputCommandInteraction,
   Events,
@@ -10,6 +11,8 @@ import { BotClient } from 'src/Bot'
 const event = {
   name: Events.InteractionCreate,
   async execute(interaction: BaseInteraction) {
+    if (interaction.isAutocomplete()) return handleAutocomplete(interaction)
+
     let command
     if (interaction.isChatInputCommand())
       command = await getChatCommandName(interaction)
@@ -26,12 +29,32 @@ const event = {
       await command.execute(interaction as ChatInputCommandInteraction)
     } catch (error) {
       console.error(error)
-      await interaction.reply({
+      const errorReply = {
         content: 'There was an error while executing this command!',
         ephemeral: true,
-      })
+      }
+      if (interaction.deferred) await interaction.editReply(errorReply)
+      else if (!interaction.replied) await interaction.reply(errorReply)
     }
   },
+}
+
+async function handleAutocomplete(interaction: AutocompleteInteraction) {
+  const client = interaction.client as BotClient
+  const command = client.commands.get(interaction.commandName)
+  if (!command?.autocomplete) return
+
+  try {
+    await command.autocomplete(interaction)
+  } catch (error) {
+    console.error('[Autocomplete] Error:', error)
+    // An empty suggestion list is the only safe response left at this point
+    try {
+      if (!interaction.responded) await interaction.respond([])
+    } catch {
+      // The interaction likely expired -- nothing left to respond to
+    }
+  }
 }
 
 async function getChatCommandName(interaction: ChatInputCommandInteraction) {
@@ -43,8 +66,7 @@ async function getReplyCommand(
   interaction: MessageComponentInteraction | ModalSubmitInteraction,
 ) {
   const client = interaction.client as BotClient
-  const buttonAction = interaction.customId.split('_')[0]
-  return client.commands.get(buttonAction)
+  return client.commands.get(interaction.customId.split('_')[0])
 }
 
 export default event

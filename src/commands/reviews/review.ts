@@ -1,116 +1,52 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
-import { replyWithResults } from './utils'
+import { replyWithResults, sendReviewScorePrompt } from './utils'
 import { handleSubcommand } from '../utils/helpers'
+import {
+  buildMediaSubcommands,
+  createMediaExecutors,
+  getSelectedResultId,
+  searchAutocomplete,
+} from './utils/mediaSearch'
+import { ReviewType } from '../../utils/types'
+
+const UPDATE_NOTE =
+  '*If already reviewed, you will be updating your previous score.*'
 
 const command = {
-  data: new SlashCommandBuilder()
-    .setName('review')
-    .setDescription('Leave a new review')
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('movie')
-        .setDescription('Review a movie')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the movie you wish to review')
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('series')
-        .setDescription('Review a series')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the series you wish to review')
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('game')
-        .setDescription('Review a game')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the game you wish to review')
-            .setRequired(true),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('music')
-        .setDescription('Review an album/single')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the album/single you wish to review')
-            .setRequired(true),
-        ),
-    ),
+  data: buildMediaSubcommands(
+    new SlashCommandBuilder()
+      .setName('review')
+      .setDescription('Leave a new review'),
+    ({ subject }) => `Review ${subject}`,
+    ({ noun }) => `The title of the ${noun} you wish to review`,
+  ),
   execute: (interaction: ChatInputCommandInteraction) =>
     handleSubcommand(interaction, subcommandExecutors),
+  autocomplete: searchAutocomplete,
 }
 
-const subcommandExecutors = {
-  movie: startMovieReview,
-  series: startSeriesReview,
-  game: startGameReview,
-  music: startMusicReview,
-}
+const subcommandExecutors = createMediaExecutors(startMediaReview)
 
-async function startMovieReview(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'startReview_movie'
-  const additionalMessage =
-    '*If already reviewed, you will be updating your previous score.*'
-  await replyWithResults(
-    interaction,
-    commandPrefix,
-    additionalMessage,
-    true,
-    'movie',
-  )
-}
+async function startMediaReview(
+  interaction: ChatInputCommandInteraction,
+  type: ReviewType,
+) {
+  const targetId = getSelectedResultId(interaction)
 
-async function startSeriesReview(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'startReview_series'
-  const additionalMessage =
-    '*If already reviewed, you will be updating your previous score.*'
-  await replyWithResults(
-    interaction,
-    commandPrefix,
-    additionalMessage,
-    true,
-    'series',
-  )
-}
-
-async function startGameReview(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'startReview_game'
-  const additionalMessage =
-    '*If already reviewed, you will be updating your previous score.*'
-  await replyWithResults(
-    interaction,
-    commandPrefix,
-    additionalMessage,
-    true,
-    'game',
-  )
-}
-
-async function startMusicReview(interaction: ChatInputCommandInteraction) {
-  const commandPrefix = 'startReview_music'
-  const additionalMessage =
-    '*If already reviewed, you will be updating your previous score.*'
-  await replyWithResults(
-    interaction,
-    commandPrefix,
-    additionalMessage,
-    true,
-    'music',
-  )
+  if (targetId)
+    await sendReviewScorePrompt(interaction, type, targetId, {
+      note: UPDATE_NOTE,
+    })
+  // Fall back to a manual search when free text was submitted instead of
+  // an autocomplete suggestion
+  else
+    await replyWithResults(
+      interaction,
+      `startReview_${type}`,
+      UPDATE_NOTE,
+      true,
+      type,
+    )
 }
 
 export default command

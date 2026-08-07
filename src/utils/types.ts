@@ -1,4 +1,5 @@
 import {
+  AutocompleteInteraction,
   ChatInputCommandInteraction,
   MessageComponentInteraction,
   SlashCommandBuilder,
@@ -23,7 +24,14 @@ export interface SlashCommand {
     interaction: ChatInputCommandInteraction | MessageComponentInteraction,
     subCommandExecutor?: SubcommandExecutors,
   ) => Promise<void>
+  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>
 }
+
+// Interactions that can enter the shared media flows, either directly from a
+// slash command or from a follow-up message component
+export type MediaCommandInteraction =
+  | ChatInputCommandInteraction
+  | MessageComponentInteraction
 
 export interface SubcommandExecutors {
   [key: string]: (interaction: ChatInputCommandInteraction) => Promise<void>

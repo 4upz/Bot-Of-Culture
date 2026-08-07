@@ -1,105 +1,64 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js'
 import { replyWithResults } from './utils'
 import { handleSubcommand } from '../utils/helpers'
+import {
+  buildMediaSubcommands,
+  createMediaExecutors,
+  getSelectedResultId,
+  searchAutocomplete,
+} from './utils/mediaSearch'
+import { getAllReviews, getReviewForUser } from './utils/reviewSearch'
 import { ReviewType } from '../../utils/types'
 
-const commands = {
-  data: new SlashCommandBuilder()
-    .setName('show-review')
-    .setDescription('Show a review for yourself or a user')
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('movie')
-        .setDescription('Show a review for a movie')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription(
-              'The title of the movie you wish to see a review for.',
-            )
-            .setRequired(true),
-        )
-        .addUserOption((option) =>
-          option
-            .setName('reviewer')
-            .setDescription('The user that created the review.'),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('series')
-        .setDescription('Show a review for a series')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the series you wish to see.')
-            .setRequired(true),
-        )
-        .addUserOption((option) =>
-          option
-            .setName('reviewer')
-            .setDescription('The user that created the review.'),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('game')
-        .setDescription('Show a review for a game')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the game you wish to see.')
-            .setRequired(true),
-        )
-        .addUserOption((option) =>
-          option
-            .setName('reviewer')
-            .setDescription('The user that created the review.'),
-        ),
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('music')
-        .setDescription('Show a review for an album/single')
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('The title of the album/single you wish to see.')
-            .setRequired(true),
-        )
-        .addUserOption((option) =>
-          option
-            .setName('reviewer')
-            .setDescription('The user that created the review.'),
-        ),
-    ),
+const command = {
+  data: buildMediaSubcommands(
+    new SlashCommandBuilder()
+      .setName('show-review')
+      .setDescription('Show a review for yourself or a user'),
+    ({ subject }) => `Show a review for ${subject}`,
+    ({ noun }) => `The title of the ${noun} you wish to see a review for`,
+    (subcommand) =>
+      subcommand.addUserOption((option) =>
+        option
+          .setName('reviewer')
+          .setDescription('The user that created the review.'),
+      ),
+  ),
   execute: (interaction: ChatInputCommandInteraction) =>
     handleSubcommand(interaction, subcommandExecutors),
+  autocomplete: searchAutocomplete,
 }
 
-const subcommandExecutors = {
-  movie: (interaction: ChatInputCommandInteraction) =>
-    searchReview(interaction, 'movie'),
-  series: (interaction: ChatInputCommandInteraction) =>
-    searchReview(interaction, 'series'),
-  game: (interaction: ChatInputCommandInteraction) =>
-    searchReview(interaction, 'game'),
-  music: (interaction: ChatInputCommandInteraction) =>
-    searchReview(interaction, 'music'),
-}
+const subcommandExecutors = createMediaExecutors(searchReview)
 
 async function searchReview(
   interaction: ChatInputCommandInteraction,
   type: ReviewType,
 ) {
-  const user = interaction.options.getUser('reviewer')?.id
-  await replyWithResults(
-    interaction,
-    `searchReview_${type}_${user}`,
-    '',
-    true,
-    type,
-  )
+  const reviewerId = interaction.options.getUser('reviewer')?.id
+  const targetId = getSelectedResultId(interaction)
+
+  if (targetId) {
+    await interaction.deferReply({ ephemeral: true })
+    const params = {
+      type,
+      userId: reviewerId,
+      targetId,
+      guildId: interaction.guildId,
+    }
+    if (reviewerId) await getReviewForUser(params, interaction)
+    else await getAllReviews(params, interaction)
+  } else {
+    // Fall back to a manual search when free text was submitted instead of
+    // an autocomplete suggestion
+    await replyWithResults(
+      interaction,
+      `searchReview_${type}_${reviewerId}`,
+      '',
+      true,
+      type,
+    )
+  }
 }
 
-export default commands
+export default command

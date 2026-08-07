@@ -1,6 +1,6 @@
 import { MessageComponentInteraction } from 'discord.js'
 import { BotClient } from '../../../Bot'
-import { ReviewType } from '../../../utils/types'
+import { MediaCommandInteraction, ReviewType } from '../../../utils/types'
 
 const command = {
   data: {
@@ -10,16 +10,28 @@ const command = {
 }
 
 async function handleDeleteReview(interaction: MessageComponentInteraction) {
-  const client = interaction.client as BotClient
   const params = interaction.customId.split('_')
-  const type = params[1]
-  const { user, guildId } = interaction
+  const type = params[1] as ReviewType
   const targetId = params[3]
 
   await interaction.deferUpdate()
+  await deleteReviewForTarget(interaction, type, targetId)
+}
+
+/**
+ * Deletes the user's review for the given target if one exists. Expects an
+ * interaction that has already been deferred
+ */
+export async function deleteReviewForTarget(
+  interaction: MediaCommandInteraction,
+  type: ReviewType,
+  targetId: string,
+) {
+  const client = interaction.client as BotClient
+  const { user, guildId } = interaction
 
   try {
-    const collection = client.getCollection(type as ReviewType)
+    const collection = client.getCollection(type)
     if (!collection) throw new Error('Invalid collection name')
     // Grab id of review document if it exists
     const review = await (<any>collection).findFirst({
