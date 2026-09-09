@@ -89,6 +89,8 @@ const collections: Record<MediaType, string> = {
   music: 'MusicReview',
 }
 export interface Eligibility {
+  keys?: { type: MediaType; mediaId: string; userId?: string }[]
+  omitMedia?: boolean
   userId?: string
   members?: string[]
   asOf: Date
@@ -104,6 +106,16 @@ export function eligiblePipeline(type: MediaType, options: Eligibility): any[] {
   if (options.userId) match.userId = options.userId
   if (options.members) match.userId = { $in: options.members }
   if (options.mediaId) match[`${type}Id`] = options.mediaId
+  // Apply bounded title/source keys before preference/title joins in every collection.
+  if (options.keys) {
+    const keys = options.keys.filter((key) => key.type === type)
+    if (keys.length)
+      match.$or = keys.map((key) => ({
+        [`${type}Id`]: key.mediaId,
+        ...(key.userId ? { userId: key.userId } : {}),
+      }))
+    else match[`${type}Id`] = { $in: [] }
+  }
   const p: any[] = [
     { $match: match },
     {
@@ -132,16 +144,30 @@ export function eligiblePipeline(type: MediaType, options: Eligibility): any[] {
       },
     },
     { $set: { type: { $literal: type }, mediaId: `$${type}Id` } },
+  ]
+  if (!options.omitMedia || options.q) p.push(...mediaLookupPipeline(type))
+  if (options.q)
+    p.push({
+      $match: {
+        'media.normalizedTitle': {
+          $regex: options.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        },
+      },
+    })
+  return p
+}
+export function mediaLookupPipeline(type?: MediaType): any[] {
+  return [
     {
       $lookup: {
         from: 'MediaTitle',
-        let: { media: '$mediaId' },
+        let: { media: '$mediaId', type: type ? { $literal: type } : '$type' },
         pipeline: [
           {
             $match: {
               $expr: {
                 $and: [
-                  { $eq: ['$type', type] },
+                  { $eq: ['$type', '$$type'] },
                   { $eq: ['$mediaId', '$$media'] },
                 ],
               },
@@ -154,15 +180,6 @@ export function eligiblePipeline(type: MediaType, options: Eligibility): any[] {
     },
     { $set: { media: { $arrayElemAt: ['$_titles', 0] } } },
   ]
-  if (options.q)
-    p.push({
-      $match: {
-        'media.normalizedTitle': {
-          $regex: options.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-        },
-      },
-    })
-  return p
 }
 export function unionPipeline(
   selected: string,

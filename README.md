@@ -159,14 +159,25 @@ incomplete, disconnected, or stale membership synchronization. A single bot/web
 process is required for immediate write invalidation. Open pages revalidate on
 focus and every 30 seconds; already received content cannot be retracted.
 
-For GCE, provision `/etc/bot-of-culture/runtime.env` separately (do not commit it),
-containing the readiness flag, web flag, public HTTPS URL and port. The startup
-scripts publish container port 8080 on **loopback only**. Configure an HTTPS reverse
-proxy to `127.0.0.1:8080`; do not expose the application port directly. The app does
-not trust forwarded IP headers by default, so the rate limit applies collectively
-behind a proxy. Configure proxy limits for the expected traffic. This repository
-change does not provision DNS, TLS, firewall rules, enable an intent, register
-commands, or deploy anything.
+For GCE, follow [the controlled deployment procedure](docs/deployment-durability.md).
+Persist configuration in `/var/lib/bot-of-culture/runtime.env`; COS boot restores
+its `/etc` link. Cloud Build builds and publishes images only. Manual rollout
+checks disk space, immutable images, configuration and startup, retains rollback
+artifacts, and avoids a whole-VM restart or blanket image pruning.
+
+The origin port 8080 is published on **loopback only**, behind the HTTPS proxy.
+Set `REVIEW_WEB_TRUSTED_PROXY_IPS` to the verified immediate proxy IP; only that
+hop is trusted, never arbitrary forwarded chains. With no setting, forwarded
+headers are ignored. API reads allow eight active requests, 90 requests per
+client per minute and at most 4,096 client buckets. An eight-second cooperative
+work deadline stops further queries and lowers each Mongo execution budget;
+unsettled database work retains its admission slot. These bounds do not replace
+DB/network timeouts or production monitoring.
+
+Public exposure, Server Members Intent, command registration, migration and
+production rollout remain explicit operational gates. See the
+[isolated capacity harness](scripts/review-web/load/README.md) for synthetic-only
+workload validation and its limitations.
 
 Run `yarn prisma:generate`, `yarn build`, and `yarn test` for local checks. MongoDB
 integration fixtures require an explicitly configured disposable test replica set;
@@ -180,3 +191,5 @@ emoji display `:name:`, and Discord-only timestamps/commands remain literal text
 these do not resolve identities or send notifications. Code language names do not
 load syntax-highlighting scripts. Formatting is a safe subset, not an embedded
 Discord client.
+
+Capacity measurements and launch limits: [September 2026 validation](docs/validation/cosigned-capacity-2026-09-09/README.md).

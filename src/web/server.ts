@@ -1,15 +1,49 @@
 import express from 'express'
 import { resolve } from 'path'
+import { isIP } from 'net'
 import { BotClient } from '../Bot'
 import { MembershipService, WebRevision } from './membership'
 import { PublicReviewService } from './service'
 import { HttpError, MediaType } from './query'
+export interface WebAppOptions {
+  trustedProxyIps?: string[]
+}
+
+// Only the immediate, explicitly configured reverse proxy may supply client IPs.
+// IPv4 sockets can appear in mapped IPv6 form when Node listens on both stacks.
+function normalizeIp(ip: string) {
+  const version = isIP(ip)
+  if (!version) return ip
+  // URL canonicalizes zero compression and hexadecimal/dotted mapped forms.
+  // Keep an IPv6 zone identifier exact; URL itself does not accept zones.
+  const [address, zone] = ip.split('%')
+  const mapped = version === 4 ? `::ffff:${address}` : address
+  return new URL(`http://[${mapped}]/`).hostname + (zone ? `%${zone}` : '')
+}
+
 export function createWebApp(
   bot: BotClient,
   membership: MembershipService,
   revision: WebRevision,
+  options: WebAppOptions = {},
 ) {
   const app = express()
+  const proxyIps =
+    options.trustedProxyIps ??
+    (process.env.REVIEW_WEB_TRUSTED_PROXY_IPS || '')
+      .split(',')
+      .map((ip) => ip.trim())
+      .filter(Boolean)
+  if (proxyIps.some((ip) => !isIP(ip)))
+    throw new Error(
+      'REVIEW_WEB_TRUSTED_PROXY_IPS must contain only exact IP addresses',
+    )
+  const trustedProxyIps = new Set(proxyIps.map(normalizeIp))
+  app.set(
+    'trust proxy',
+    (ip: string, hop: number) =>
+      hop === 0 && trustedProxyIps.has(normalizeIp(ip)),
+  )
   app.disable('x-powered-by')
   app.set('query parser', 'simple')
   app.use((_req, res, next) => {
@@ -26,41 +60,60 @@ export function createWebApp(
   const service = new PublicReviewService(bot, membership, revision)
   const buckets = new Map<string, { start: number; count: number }>()
   let active = 0
-  const cleanup = setInterval(() => {
+  const pruneBuckets = () => {
     const cutoff = Date.now() - 60000
-    for (const [ip, b] of buckets) if (b.start < cutoff) buckets.delete(ip)
-  }, 60000)
+    for (const [ip, b] of buckets) if (b.start <= cutoff) buckets.delete(ip)
+  }
+  const cleanup = setInterval(pruneBuckets, 60000)
   cleanup.unref()
   app.use('/api', (req, res, next) => {
     if (req.method !== 'GET')
       return res.status(405).json({ error: 'Read-only endpoint' })
-    const ip = req.ip || 'unknown'
-    let b = buckets.get(ip)
-    if (!b || Date.now() - b.start > 60000) {
-      b = { start: Date.now(), count: 0 }
-      buckets.set(ip, b)
-    }
-    if (++b.count > 90 || active >= 8) {
+    const reject = () => {
       res.set('Retry-After', '10')
       return res.status(429).json({ error: 'Please wait a moment and retry' })
     }
+    const ip = req.ip || 'unknown'
+    let b = buckets.get(ip)
+    if (!b || Date.now() - b.start >= 60000) {
+      if (!b && buckets.size >= 4096) {
+        pruneBuckets()
+        if (buckets.size >= 4096) return reject()
+      }
+      b = { start: Date.now(), count: 0 }
+      buckets.set(ip, b)
+    }
+    if (++b.count > 90 || active >= 8) return reject()
     return next()
   })
   const route =
     (kind: 'profile' | 'guild' | 'title') =>
     async (req: express.Request, res: express.Response) => {
       active++
+      const controller = new AbortController()
+      const deadline = Date.now() + 8000
+      const abort = () => controller.abort()
+      const timer = setTimeout(abort, Math.max(0, deadline - Date.now()))
+      timer.unref()
+      req.once('aborted', abort)
+      res.once('close', abort)
       try {
-        res.json(
-          await service.read(
-            kind,
-            req.params.id,
-            req.query,
-            req.params.type as MediaType,
-            req.params.mediaId,
-          ),
+        const result = await service.read(
+          kind,
+          req.params.id,
+          req.query,
+          req.params.type as MediaType,
+          req.params.mediaId,
+          { deadline, signal: controller.signal },
         )
+        if (controller.signal.aborted || Date.now() >= deadline)
+          throw new HttpError(
+            503,
+            'Reviews temporarily unavailable. Try again shortly.',
+          )
+        if (!res.destroyed) res.json(result)
       } catch (error) {
+        if (res.destroyed) return
         if (error instanceof HttpError)
           res.status(error.status).json({ error: error.message })
         else {
@@ -70,6 +123,10 @@ export function createWebApp(
           })
         }
       } finally {
+        clearTimeout(timer)
+        req.removeListener('aborted', abort)
+        res.removeListener('close', abort)
+        // A disconnect/deadline cannot release capacity while DB work still runs.
         active--
       }
     }

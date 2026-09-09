@@ -1,0 +1,82 @@
+{
+  "datasetSize": 6000,
+  "fixtureShape": "400 titles",
+  "queries": [
+    {
+      "query": 1,
+      "collection": "ReviewPreference",
+      "indexes": [],
+      "scanStages": [
+        "COLLSCAN"
+      ]
+    },
+    {
+      "query": 2,
+      "collection": "MovieReview",
+      "executionTimeMillis": 95,
+      "initialDocsExamined": 1500,
+      "indexes": [
+        "userId_1_movieId_1",
+        "userId_1__createdAt_1",
+        "userId_1",
+        "userId_1_seriesId_1",
+        "userId_1_gameId_1",
+        "userId_1_musicId_1",
+        "type_1_mediaId_1"
+      ],
+      "scanStages": [
+        "IXSCAN"
+      ]
+    },
+    {
+      "query": 3,
+      "collection": "MovieReview",
+      "executionTimeMillis": 8,
+      "initialDocsExamined": 30,
+      "indexes": [
+        "movieId_1__createdAt_1",
+        "userId_1__createdAt_1",
+        "userId_1_movieId_1",
+        "userId_1",
+        "type_1_mediaId_1",
+        "seriesId_1__createdAt_1",
+        "userId_1_seriesId_1",
+        "gameId_1__createdAt_1",
+        "userId_1_gameId_1",
+        "musicId_1__createdAt_1",
+        "userId_1_musicId_1"
+      ],
+      "scanStages": [
+        "IXSCAN"
+      ]
+    },
+    {
+      "query": 4,
+      "collection": "MovieReview",
+      "executionTimeMillis": 0,
+      "initialDocsExamined": 0,
+      "indexes": [
+        "userId_1_movieId_1",
+        "userId_1__createdAt_1",
+        "movieId_1__createdAt_1",
+        "userId_1_seriesId_1",
+        "seriesId_1__createdAt_1",
+        "userId_1_gameId_1",
+        "gameId_1__createdAt_1",
+        "userId_1_musicId_1",
+        "musicId_1__createdAt_1"
+      ],
+      "scanStages": [
+        "IXSCAN"
+      ]
+    },
+    {
+      "query": 5,
+      "collection": "ReviewPreference",
+      "indexes": [],
+      "scanStages": [
+        "COLLSCAN"
+      ]
+    }
+  ]
+}

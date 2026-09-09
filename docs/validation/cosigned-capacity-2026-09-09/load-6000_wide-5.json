@@ -1,0 +1,203 @@
+{
+  "readers": 5,
+  "durationMs": 45000,
+  "normal": {
+    "datasetSize": 6000,
+    "simulatedDbDelayMs": 40,
+    "fixtureShape": "4000 titles",
+    "runtime": {
+      "node": "v18.20.8",
+      "arch": "arm64",
+      "platform": "linux"
+    },
+    "queries": 322,
+    "botReadCount": 25,
+    "botReadP95Ms": 50.04045903682709,
+    "botReadMaxMs": 52.32329201698303,
+    "botReadErrors": 0,
+    "botReadSkipped": 0,
+    "queryP95Ms": 259.74233400821686,
+    "peakRssMiB": 116.15625,
+    "eventLoopP95Ms": 16.015359,
+    "eventLoopMaxMs": 52.002815,
+    "botTimerDelayP95Ms": 5.000458002090454,
+    "botTimerDelayMaxMs": 15.653292000293732,
+    "cpu": {
+      "user": 1368405,
+      "system": 232463
+    },
+    "wallMs": 48832.04652297497,
+    "statuses": {
+      "200": 52
+    },
+    "requests": 52,
+    "p50Ms": 449.94895799999995,
+    "p95Ms": 583.840166,
+    "maxMs": 646.5779170000023,
+    "byKind": {
+      "guild": {
+        "count": 5,
+        "p95Ms": 471.7464580000001
+      },
+      "next-page": {
+        "count": 12,
+        "p95Ms": 473.3762079999997
+      },
+      "search": {
+        "count": 10,
+        "p95Ms": 614.3704999999991
+      },
+      "profile": {
+        "count": 20,
+        "p95Ms": 378.18816700000025
+      },
+      "refresh": {
+        "count": 5,
+        "p95Ms": 459.8575420000052
+      }
+    },
+    "failures": []
+  },
+  "overload": {
+    "datasetSize": 6000,
+    "simulatedDbDelayMs": 40,
+    "fixtureShape": "4000 titles",
+    "runtime": {
+      "node": "v18.20.8",
+      "arch": "arm64",
+      "platform": "linux"
+    },
+    "queries": 16,
+    "botReadCount": 3,
+    "botReadP95Ms": 102.93500101566315,
+    "botReadMaxMs": 119.42262500524521,
+    "botReadErrors": 0,
+    "botReadSkipped": 0,
+    "queryP95Ms": 5203.447085976601,
+    "peakRssMiB": 111.79296875,
+    "eventLoopP95Ms": 17.235967,
+    "eventLoopMaxMs": 149.159935,
+    "botTimerDelayP95Ms": 5.861874997615814,
+    "botTimerDelayMaxMs": 96.79716700315475,
+    "cpu": {
+      "user": 137440,
+      "system": 19400
+    },
+    "wallMs": 5278.420793950558,
+    "statuses": {
+      "429": 12,
+      "503": 8
+    },
+    "recovery": {
+      "ok": true,
+      "ms": 430.67620899999747
+    },
+    "failures": [
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      }
+    ]
+  },
+  "limitations": [
+    "Synthetic API flows, not rendered browser or live Discord commands",
+    "Conservative CPU/memory quota does not reproduce GCE burst scheduling",
+    "Each aggregate adds configured simulated latency; real Atlas throughput unmeasured"
+  ]
+}

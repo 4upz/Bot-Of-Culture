@@ -5,6 +5,7 @@ import {
   Eligibility,
   HttpError,
   MediaType,
+  mediaLookupPipeline,
   parseQuery,
   rawDate,
   rawId,
@@ -13,6 +14,13 @@ import {
   unionPipeline,
 } from './query'
 import { MembershipService, WebRevision } from './membership'
+export interface ReadContext {
+  deadline: number
+  signal?: AbortSignal
+}
+interface ReadWork extends ReadContext {
+  queries: number
+}
 const order = { _createdAt: -1, type: 1, _id: -1 }
 export class PublicReviewService {
   private cursors = new CursorCodec()
@@ -21,41 +29,58 @@ export class PublicReviewService {
     private membership: MembershipService,
     private revision: WebRevision,
   ) {}
-  private async aggregate(collection: string, pipeline: any[]): Promise<any[]> {
+  private check(work: ReadWork) {
+    const remaining = Math.floor(work.deadline - Date.now())
+    if (work.signal?.aborted || !Number.isFinite(remaining) || remaining <= 0)
+      throw new HttpError(503, 'Reviews temporarily unavailable')
+    return remaining
+  }
+  private async aggregate(
+    work: ReadWork,
+    collection: string,
+    pipeline: any[],
+  ): Promise<any[]> {
+    this.check(work)
+    if (++work.queries > 16)
+      throw new HttpError(503, 'Reviews temporarily unavailable')
     const models: any = this.bot.db
     const model = models[collection[0].toLowerCase() + collection.slice(1)]
-    return (await model.aggregateRaw({
+    const remaining = this.check(work)
+    const rows = (await model.aggregateRaw({
       pipeline,
-      options: { maxTimeMS: 5000, allowDiskUse: false },
+      options: {
+        maxTimeMS: Math.min(5000, remaining),
+        allowDiskUse: false,
+      },
     })) as any[]
+    this.check(work)
+    return rows
   }
-  private async generation(includeTitles = false) {
-    const [prefs, titles] = await Promise.all([
-      this.aggregate('ReviewPreference', [
-        { $sort: { userId: 1, _id: 1 } },
-        { $limit: 10001 },
-        { $project: { userId: 1, isPublic: 1 } },
-      ]),
-      includeTitles
-        ? this.aggregate('MediaTitle', [
-            {
-              $group: {
-                _id: null,
-                count: { $sum: 1 },
-                latest: { $max: '$fetchedAt' },
-              },
-            },
-          ])
-        : Promise.resolve([]),
+  private async generation(work: ReadWork, includeTitles = false) {
+    const prefs = await this.aggregate(work, 'ReviewPreference', [
+      { $sort: { userId: 1, _id: 1 } },
+      { $limit: 10001 },
+      { $project: { userId: 1, isPublic: 1 } },
     ])
+    const titles = includeTitles
+      ? await this.aggregate(work, 'MediaTitle', [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              latest: { $max: '$fetchedAt' },
+            },
+          },
+        ])
+      : []
     if (prefs.length > 10000)
       throw new HttpError(503, 'Reviews temporarily unavailable')
     return createHash('sha256')
       .update(JSON.stringify([this.revision.value, prefs, titles]))
       .digest('hex')
   }
-  private async profilePublic(userId: string) {
-    const prefs = await this.aggregate('ReviewPreference', [
+  private async profilePublic(work: ReadWork, userId: string) {
+    const prefs = await this.aggregate(work, 'ReviewPreference', [
       { $match: { userId } },
       { $limit: 2 },
     ])
@@ -68,7 +93,10 @@ export class PublicReviewService {
     input: Record<string, unknown>,
     mediaType?: MediaType,
     mediaId?: string,
+    context: ReadContext = { deadline: Date.now() + 8000 },
   ) {
+    const work: ReadWork = { ...context, queries: 0 }
+    this.check(work)
     if (!/^\d{1,22}$/.test(id)) throw new HttpError(400, 'Invalid identifier')
     if (
       kind === 'title' &&
@@ -81,8 +109,8 @@ export class PublicReviewService {
       query.q = ''
     }
     const roster = kind === 'profile' ? undefined : this.membership.get(id)
-    if (kind === 'profile') await this.profilePublic(id)
-    const baseGeneration = await this.generation(Boolean(query.q))
+    if (kind === 'profile') await this.profilePublic(work, id)
+    const baseGeneration = await this.generation(work, Boolean(query.q))
     const generation = baseGeneration + ':' + (roster?.generation || 0)
     const scope = `${kind}:${id}:${mediaType || ''}:${mediaId || ''}`
     const binding = { scope, generation, type: query.type, q: query.q }
@@ -97,17 +125,15 @@ export class PublicReviewService {
       mediaId,
       q: query.q,
     }
-    const base = unionPipeline(query.type, options)
-    const coverageBase = unionPipeline(query.type, { ...options, q: '' })
-    const coverage = await this.aggregate(coverageBase.collection, [
-      ...coverageBase.pipeline,
-      { $match: { 'media.title': { $exists: false } } },
-      { $limit: 1 },
-      { $project: { _id: 1 } },
-    ])
+    let coverage: any[]
     let items: any[]
     let nextCursor: string | null = null
     if (kind === 'guild') {
+      const base = unionPipeline(query.type, {
+        ...options,
+        q: '',
+        omitMedia: true,
+      })
       const grouped: any[] = [
         ...base.pipeline,
         {
@@ -116,14 +142,23 @@ export class PublicReviewService {
             latestReviewCreatedAt: { $max: '$_createdAt' },
             averageScore: { $avg: '$score' },
             visibleReviewCount: { $sum: 1 },
-            media: { $first: '$media' },
           },
         },
         { $set: { type: '$_id.type', mediaId: '$_id.mediaId' } },
+        ...mediaLookupPipeline(),
       ]
+      const titles: any[] = []
+      if (query.q)
+        titles.push({
+          $match: {
+            'media.normalizedTitle': {
+              $regex: query.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+            },
+          },
+        })
       if (cursor?.last) {
         const l = cursor.last
-        grouped.push({
+        titles.push({
           $match: {
             $or: [
               { latestReviewCreatedAt: { $lt: { $date: l.createdAt } } },
@@ -140,25 +175,38 @@ export class PublicReviewService {
           },
         })
       }
-      grouped.push(
+      titles.push(
         { $sort: { latestReviewCreatedAt: -1, type: 1, mediaId: 1 } },
         { $limit: query.limit + 1 },
       )
-      const rows = await this.aggregate(base.collection, grouped)
+      grouped.push({
+        $facet: {
+          coverage: [
+            { $match: { 'media.title': { $exists: false } } },
+            { $limit: 1 },
+            { $project: { _id: 1 } },
+          ],
+          titles,
+        },
+      })
+      const [page] = await this.aggregate(work, base.collection, grouped)
+      coverage = page?.coverage || []
+      const rows = page?.titles || []
       const expansionGeneration = query.q
-        ? (await this.generation(false)) + ':' + roster.generation
+        ? (await this.generation(work, false)) + ':' + roster.generation
         : generation
       const hasMore = rows.length > query.limit
       rows.splice(query.limit)
       items = []
-      // Bounded title previews; never push every title's reviews into an aggregation array.
-      for (const row of rows) {
-        const preview = await this.reviewPage(
-          row.type,
-          { ...options, mediaId: row.mediaId },
-          3,
-        )
-        const reviews = await this.serialize(preview.rows, id, options)
+      // Every facet is capped at four rows before it becomes an array (at most 20 titles).
+      const previews = await this.previews(work, rows, options)
+      const flat = previews.flatMap((preview) => preview.rows)
+      const serialized = await this.serialize(work, flat, id, options)
+      let offset = 0
+      for (const [index, row] of rows.entries()) {
+        const preview = previews[index]
+        const reviews = serialized.slice(offset, offset + preview.rows.length)
+        offset += preview.rows.length
         const titleBinding = {
           scope: `title:${id}:${row.type}:${row.mediaId}`,
           generation: expansionGeneration,
@@ -191,13 +239,22 @@ export class PublicReviewService {
         })
       }
     } else {
+      const coverageBase = unionPipeline(query.type, { ...options, q: '' })
+      coverage = await this.aggregate(work, coverageBase.collection, [
+        ...coverageBase.pipeline,
+        { $match: { 'media.title': { $exists: false } } },
+        { $limit: 1 },
+        { $project: { _id: 1 } },
+      ])
       const page = await this.reviewPage(
+        work,
         query.type,
         options,
         query.limit,
         cursor?.last,
       )
       items = await this.serialize(
+        work,
         page.rows,
         kind === 'title' ? id : undefined,
         options,
@@ -207,12 +264,12 @@ export class PublicReviewService {
     }
     const identity =
       kind === 'profile'
-        ? items[0] || (await this.profileIdentity(id, options))
+        ? items[0] || (await this.profileIdentity(work, id, options))
         : undefined
     // Recheck after query work: a completed opt-out or roster change cannot leak an in-flight response.
-    if (kind === 'profile') await this.profilePublic(id)
+    if (kind === 'profile') await this.profilePublic(work, id)
     if (
-      (await this.generation(Boolean(query.q))) !== baseGeneration ||
+      (await this.generation(work, Boolean(query.q))) !== baseGeneration ||
       (roster && this.membership.get(id).generation !== roster.generation)
     )
       throw new HttpError(409, 'Results changed; refresh to continue')
@@ -233,9 +290,13 @@ export class PublicReviewService {
     }
     return result
   }
-  private async profileIdentity(id: string, options: Eligibility) {
+  private async profileIdentity(
+    work: ReadWork,
+    id: string,
+    options: Eligibility,
+  ) {
     const base = unionPipeline('all', { ...options, userId: id, q: '' })
-    const rows = await this.aggregate(base.collection, [
+    const rows = await this.aggregate(work, base.collection, [
       ...base.pipeline,
       { $sort: order },
       { $limit: 1 },
@@ -255,6 +316,7 @@ export class PublicReviewService {
     })
   }
   private async reviewPage(
+    work: ReadWork,
     type: string,
     options: Eligibility,
     limit: number,
@@ -276,44 +338,80 @@ export class PublicReviewService {
         },
       })
     base.pipeline.push({ $sort: order }, { $limit: limit + 1 })
-    const rows = await this.aggregate(base.collection, base.pipeline)
+    const rows = await this.aggregate(work, base.collection, base.pipeline)
     const more = rows.length > limit
     rows.splice(limit)
     return { rows, more }
   }
+  private async previews(work: ReadWork, titles: any[], options: Eligibility) {
+    if (!titles.length) return []
+    const base = unionPipeline('all', {
+      ...options,
+      q: '',
+      keys: titles.map(({ type, mediaId }) => ({ type, mediaId })),
+    })
+    const facets: Record<string, any[]> = {}
+    titles.forEach((title, index) => {
+      facets[`title${index}`] = [
+        { $match: { type: title.type, mediaId: title.mediaId } },
+        { $sort: order },
+        { $limit: 4 },
+        { $unset: ['_preferences', '_titles'] },
+      ]
+    })
+    const [result] = await this.aggregate(work, base.collection, [
+      ...base.pipeline,
+      { $facet: facets },
+    ])
+    return titles.map((_, index) => {
+      const rows = result?.[`title${index}`] || []
+      return { rows: rows.slice(0, 3), more: rows.length > 3 }
+    })
+  }
   private async serialize(
+    work: ReadWork,
     rows: any[],
     guildId: string | undefined,
     options: Eligibility,
   ) {
-    // Only sources for this bounded page are checked. Copied attribution never bypasses author/member policy.
-    const sources = new Map<string, boolean>()
+    // Resolve all copied sources for this page together, retaining author privacy and roster policy.
+    const keys = new Map<string, any>()
+    const sourceKey = (row: any, userId: string) =>
+      JSON.stringify([row.type, row.mediaId, userId])
     for (const row of rows) {
-      if (row.sharedFromUserId) {
-        const key = `${row.type}:${row.mediaId}:${row.sharedFromUserId}`
-        if (!sources.has(key)) {
-          if (
-            options.members &&
-            !options.members.includes(row.sharedFromUserId)
-          )
-            sources.set(key, false)
-          else {
-            const base = unionPipeline(row.type, {
-              asOf: options.asOf,
-              userId: row.sharedFromUserId,
-              mediaId: row.mediaId,
-            })
-            const source = await this.aggregate(base.collection, [
-              ...base.pipeline,
-              { $limit: 1 },
-              { $project: { _id: 1 } },
-            ])
-            sources.set(key, source.length === 1)
-          }
-        }
-        row._sourceAllowed = sources.get(key)
-      }
+      if (
+        row.sharedFromUserId &&
+        (!options.members || options.members.includes(row.sharedFromUserId))
+      )
+        keys.set(sourceKey(row, row.sharedFromUserId), {
+          type: row.type,
+          mediaId: row.mediaId,
+          userId: row.sharedFromUserId,
+        })
     }
+    const allowed = new Set<string>()
+    if (keys.size) {
+      const base = unionPipeline('all', {
+        asOf: options.asOf,
+        members: options.members,
+        keys: [...keys.values()],
+        omitMedia: true,
+      })
+      const sources = await this.aggregate(work, base.collection, [
+        ...base.pipeline,
+        {
+          $group: {
+            _id: { type: '$type', mediaId: '$mediaId', userId: '$userId' },
+          },
+        },
+        { $limit: keys.size },
+      ])
+      for (const source of sources)
+        allowed.add(sourceKey(source._id, source._id.userId))
+    }
+    for (const row of rows)
+      if (row.sharedFromUserId)
+        row._sourceAllowed = allowed.has(sourceKey(row, row.sharedFromUserId))
     return rows.map((row) => serializeReview(row, guildId))
   }
 }

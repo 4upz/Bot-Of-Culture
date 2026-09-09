@@ -1,0 +1,161 @@
+{
+  "readers": 5,
+  "durationMs": 45000,
+  "normal": {
+    "datasetSize": 600,
+    "simulatedDbDelayMs": 40,
+    "runtime": {
+      "node": "v18.20.8",
+      "arch": "arm64",
+      "platform": "linux"
+    },
+    "queries": 332,
+    "botReadCount": 24,
+    "botReadP95Ms": 51.33908295631409,
+    "botReadMaxMs": 102.21899998188019,
+    "botReadErrors": 0,
+    "botReadSkipped": 0,
+    "queryP95Ms": 92.0519580245018,
+    "peakRssMiB": 111.86328125,
+    "eventLoopP95Ms": 16.023551,
+    "eventLoopMaxMs": 108.068863,
+    "botTimerDelayP95Ms": 4.981666028499603,
+    "botTimerDelayMaxMs": 58.341832995414734,
+    "cpu": {
+      "user": 1827843,
+      "system": 282647
+    },
+    "wallMs": 48272.841687977314,
+    "statuses": {
+      "200": 54
+    },
+    "requests": 54,
+    "p50Ms": 305.781792,
+    "p95Ms": 440.0212499999998,
+    "maxMs": 808.7277499999982,
+    "byKind": {
+      "guild": {
+        "count": 5,
+        "p95Ms": 292.3210829999998
+      },
+      "next-page": {
+        "count": 14,
+        "p95Ms": 305.6217089999991
+      },
+      "search": {
+        "count": 10,
+        "p95Ms": 440.0212499999998
+      },
+      "profile": {
+        "count": 20,
+        "p95Ms": 478.73554100000183
+      },
+      "refresh": {
+        "count": 5,
+        "p95Ms": 288.25833299999795
+      }
+    },
+    "failures": []
+  },
+  "overload": {
+    "datasetSize": 600,
+    "simulatedDbDelayMs": 40,
+    "runtime": {
+      "node": "v18.20.8",
+      "arch": "arm64",
+      "platform": "linux"
+    },
+    "queries": 40,
+    "botReadCount": 0,
+    "botReadP95Ms": 0,
+    "botReadMaxMs": 0,
+    "botReadErrors": 0,
+    "botReadSkipped": 0,
+    "queryP95Ms": 319.41029196977615,
+    "peakRssMiB": 110.7734375,
+    "eventLoopP95Ms": 16.285695,
+    "eventLoopMaxMs": 153.354239,
+    "botTimerDelayP95Ms": 25.38120800256729,
+    "botTimerDelayMaxMs": 97.52120900154114,
+    "cpu": {
+      "user": 134615,
+      "system": 11425
+    },
+    "wallMs": 664.9360419511795,
+    "statuses": {
+      "200": 8,
+      "429": 12
+    },
+    "recovery": {
+      "ok": true,
+      "ms": 269.74025000000256
+    },
+    "failures": [
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      }
+    ]
+  },
+  "limitations": [
+    "Synthetic API flows, not rendered browser or live Discord commands",
+    "Conservative CPU/memory quota does not reproduce GCE burst scheduling",
+    "Each aggregate adds configured simulated latency; real Atlas throughput unmeasured"
+  ]
+}

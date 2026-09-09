@@ -121,6 +121,7 @@ test(
       assert.equal(quoted.sourceUnavailable, true)
       assert.equal(JSON.stringify(all).includes('do not leak'), false)
       const literal = await service.read('guild', '10', { q: '[a]' })
+      assert.equal(literal.searchCoverage, 'partial')
       assert.deepEqual(
         literal.items.map((i) => i.media.title),
         ['Movie [A]'],
@@ -147,22 +148,18 @@ test(
       }
       assert.equal(new Set(ids).size, ids.length)
       assert.equal(ids.length, 4)
-      await db
-        .collection('MovieReview')
-        .insertOne(
-          review('movie', '1', 'after-snapshot', 5, {
-            _createdAt: new Date(Date.now() + 5),
-          }),
-        )
-      await db
-        .collection('MediaTitle')
-        .insertOne({
-          type: 'movie',
-          mediaId: 'after-snapshot',
-          title: 'Later',
-          normalizedTitle: 'later',
-          fetchedAt: new Date(),
-        })
+      await db.collection('MovieReview').insertOne(
+        review('movie', '1', 'after-snapshot', 5, {
+          _createdAt: new Date(Date.now() + 5),
+        }),
+      )
+      await db.collection('MediaTitle').insertOne({
+        type: 'movie',
+        mediaId: 'after-snapshot',
+        title: 'Later',
+        normalizedTitle: 'later',
+        fetchedAt: new Date(),
+      })
       await db
         .collection('MovieReview')
         .updateOne(
@@ -200,8 +197,14 @@ test(
         .collection('MovieReview')
         .createIndex({ userId: 1, movieId: 1 }, { unique: true })
       const { saveGlobalReview } = require('../src/reviews/writeStore')
-      const music = await saveGlobalReview(prisma.musicReview, 'music', {userId:'7',musicId:'album',username:'Seven',guildId:'10',score:4})
-      assert.equal(music.review.replayability,null)
+      const music = await saveGlobalReview(prisma.musicReview, 'music', {
+        userId: '7',
+        musicId: 'album',
+        username: 'Seven',
+        guildId: '10',
+        score: 4,
+      })
+      assert.equal(music.review.replayability, null)
       await Promise.all(
         [3, 4].map((score) =>
           saveGlobalReview(prisma.movieReview, 'movie', {
@@ -240,6 +243,180 @@ test(
     } finally {
       web?.close()
       if (server) await new Promise((resolve) => server.close(resolve))
+      await prisma.$disconnect()
+      await db.dropDatabase()
+      await mongo.close()
+    }
+  },
+)
+
+test(
+  'ten title previews and copied sources have constant query bounds with Mongo',
+  { skip: !url },
+  async () => {
+    const testUrl = url.replace(
+      /boc_review_web_test[a-z_]*/,
+      'boc_review_web_test_bounded',
+    )
+    const mongo = await MongoClient.connect(testUrl),
+      db = mongo.db()
+    const prisma = new PrismaClient({ datasources: { db: { url: testUrl } } })
+    try {
+      await db.dropDatabase()
+      const date = new Date(Date.now() - 10000)
+      const rows = [],
+        titles = []
+      for (let title = 0; title < 11; title++) {
+        const mediaId = `title-${String(title).padStart(2, '0')}`
+        const type = ['movie', 'series', 'game', 'music'][title % 4]
+        titles.push({
+          type,
+          mediaId,
+          title: `Batch ${title}`,
+          normalizedTitle: `batch ${title}`,
+          fetchedAt: date,
+        })
+        for (let user = 1; user <= 5; user++)
+          rows.push({
+            _id: new ObjectId(),
+            [type + 'Id']: mediaId,
+            userId: String(user),
+            username: `User${user}`,
+            score: user,
+            isPrivate: false,
+            _createdAt: date,
+            ...(user < 4
+              ? {
+                  sharedFromUserId: user === 1 ? '4' : '5',
+                  sharedFromUsername: 'Source',
+                  sharedFromComment: 'source quote',
+                  isQuote: true,
+                }
+              : {}),
+          })
+      }
+      for (const type of ['movie', 'series', 'game', 'music'])
+        await db
+          .collection(type[0].toUpperCase() + type.slice(1) + 'Review')
+          .insertMany(rows.filter((row) => row[type + 'Id']))
+      await db.collection('MediaTitle').insertMany(titles)
+      await db
+        .collection('ReviewPreference')
+        .insertOne({ userId: '5', isPublic: false })
+      let calls = 0
+      let afterQuery
+      const measured = new Proxy(prisma, {
+        get(target, key) {
+          const value = target[key]
+          if (value && typeof value.aggregateRaw === 'function')
+            return {
+              aggregateRaw: async (args) => {
+                calls++
+                const result = await value.aggregateRaw(args)
+                if (afterQuery) await afterQuery(args)
+                return result
+              },
+            }
+          return value
+        },
+      })
+      const roster = {
+        get: () => ({
+          members: ['1', '2', '3', '4', '5'],
+          generation: 1,
+          name: 'Batch',
+          syncedAt: Date.now(),
+        }),
+      }
+      const service = new PublicReviewService(
+        { db: measured },
+        roster,
+        new WebRevision(),
+      )
+      const first = await service.read('guild', '10', {})
+      assert.equal(first.items.length, 10)
+      assert.equal(new Set(first.items.map((title) => title.type)).size, 4)
+      assert.equal(calls, 5)
+      for (const title of first.items) {
+        assert.equal(title.visibleReviewCount, 4)
+        assert.equal(title.averageScore, 2.5)
+        assert.equal(title.reviews.length, 3)
+        assert.ok(title.nextReviewCursor)
+        assert.equal(
+          title.reviews.find((r) => r.userId === '3').sourceUnavailable,
+          true,
+        )
+      }
+      calls = 0
+      const search = await service.read('guild', '10', { q: 'batch' })
+      assert.equal(calls, 8)
+      assert.equal(search.items.length, 10)
+      const expanded = await service.read(
+        'title',
+        '10',
+        { cursor: search.items[0].nextReviewCursor },
+        search.items[0].type,
+        search.items[0].mediaId,
+      )
+      assert.equal(expanded.items.length, 1)
+      assert.equal(expanded.items[0].userId, '1')
+      assert.equal(expanded.items[0].sourceUnavailable, false)
+      assert.equal(expanded.items[0].sharedFromComment, 'source quote')
+      const second = await service.read('guild', '10', {
+        cursor: first.nextCursor,
+      })
+      assert.equal(second.items.length, 1)
+      assert.equal(
+        new Set([...first.items, ...second.items].map((t) => t.mediaId)).size,
+        11,
+      )
+      const controller = new AbortController()
+      controller.abort()
+      calls = 0
+      await assert.rejects(
+        service.read('guild', '10', {}, undefined, undefined, {
+          deadline: Date.now() + 8000,
+          signal: controller.signal,
+        }),
+        (e) => e.status === 503,
+      )
+      assert.equal(calls, 0)
+      const during = new AbortController()
+      afterQuery = () => during.abort()
+      await assert.rejects(
+        service.read('guild', '10', { q: 'batch' }, undefined, undefined, {
+          deadline: Date.now() + 8000,
+          signal: during.signal,
+        }),
+        (e) => e.status === 503,
+      )
+      assert.equal(calls, 1)
+      afterQuery = async (args) => {
+        if (args.pipeline.some((stage) => stage.$facet)) {
+          afterQuery = undefined
+          await db
+            .collection('ReviewPreference')
+            .insertOne({ userId: '1', isPublic: false })
+        }
+      }
+      await assert.rejects(
+        service.read('guild', '10', {}),
+        (e) => e.status === 409,
+      )
+      await db.collection('ReviewPreference').deleteOne({ userId: '1' })
+      const withoutSource = new PublicReviewService(
+        { db: measured },
+        { get: () => ({ ...roster.get(), members: ['1', '2', '3', '5'] }) },
+        new WebRevision(),
+      )
+      const redacted = await withoutSource.read('guild', '10', {})
+      assert.ok(
+        redacted.items.every(
+          (title) =>
+            title.reviews.find((row) => row.userId === '1').sourceUnavailable,
+        ),
+      )
+    } finally {
       await prisma.$disconnect()
       await db.dropDatabase()
       await mongo.close()
