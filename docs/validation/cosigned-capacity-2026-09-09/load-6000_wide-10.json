@@ -1,0 +1,210 @@
+{
+  "readers": 10,
+  "durationMs": 45000,
+  "normal": {
+    "datasetSize": 6000,
+    "simulatedDbDelayMs": 40,
+    "fixtureShape": "4000 titles",
+    "runtime": {
+      "node": "v18.20.8",
+      "arch": "arm64",
+      "platform": "linux"
+    },
+    "queries": 576,
+    "botReadCount": 24,
+    "botReadP95Ms": 73.40904104709625,
+    "botReadMaxMs": 279.4064999818802,
+    "botReadErrors": 0,
+    "botReadSkipped": 0,
+    "queryP95Ms": 307.96183401346207,
+    "peakRssMiB": 129.44140625,
+    "eventLoopP95Ms": 15.761407,
+    "eventLoopMaxMs": 388.759551,
+    "botTimerDelayP95Ms": 4.491916000843048,
+    "botTimerDelayMaxMs": 353.94141697883606,
+    "cpu": {
+      "user": 1793351,
+      "system": 218254
+    },
+    "wallMs": 48256.972979962826,
+    "statuses": {
+      "200": 92,
+      "429": 1
+    },
+    "requests": 93,
+    "p50Ms": 446.66020799999933,
+    "p95Ms": 3261.925750000002,
+    "maxMs": 4555.096875000003,
+    "byKind": {
+      "guild": {
+        "count": 10,
+        "p95Ms": 571.2406249999999
+      },
+      "next-page": {
+        "count": 20,
+        "p95Ms": 646.2239170000003
+      },
+      "search": {
+        "count": 20,
+        "p95Ms": 927.1807079999999
+      },
+      "profile": {
+        "count": 33,
+        "p95Ms": 383.2225840000028
+      },
+      "refresh": {
+        "count": 10,
+        "p95Ms": 4302.908582999997
+      }
+    },
+    "failures": [
+      {
+        "kind": "refresh",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      }
+    ]
+  },
+  "overload": {
+    "datasetSize": 6000,
+    "simulatedDbDelayMs": 40,
+    "fixtureShape": "4000 titles",
+    "runtime": {
+      "node": "v18.20.8",
+      "arch": "arm64",
+      "platform": "linux"
+    },
+    "queries": 16,
+    "botReadCount": 3,
+    "botReadP95Ms": 56.18045800924301,
+    "botReadMaxMs": 60.07754200696945,
+    "botReadErrors": 0,
+    "botReadSkipped": 0,
+    "queryP95Ms": 5181.20841896534,
+    "peakRssMiB": 120.640625,
+    "eventLoopP95Ms": 16.015359,
+    "eventLoopMaxMs": 29.491199,
+    "botTimerDelayP95Ms": 4.885583996772766,
+    "botTimerDelayMaxMs": 8.959708988666534,
+    "cpu": {
+      "user": 106717,
+      "system": 20651
+    },
+    "wallMs": 5275.134043991566,
+    "statuses": {
+      "429": 12,
+      "503": 8
+    },
+    "recovery": {
+      "ok": true,
+      "ms": 562.5791249999966
+    },
+    "failures": [
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 429,
+        "error": "Please wait a moment and retry"
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      },
+      {
+        "kind": "burst",
+        "status": 503,
+        "error": "Reviews temporarily unavailable. Try again shortly."
+      }
+    ]
+  },
+  "limitations": [
+    "Synthetic API flows, not rendered browser or live Discord commands",
+    "Conservative CPU/memory quota does not reproduce GCE burst scheduling",
+    "Each aggregate adds configured simulated latency; real Atlas throughput unmeasured"
+  ]
+}
