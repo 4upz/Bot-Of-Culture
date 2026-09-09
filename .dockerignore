@@ -1,1 +1,10 @@
 .env
+.env.*
+.git
+node_modules
+dist
+.codex
+.agents
+docs
+tests
+*.log

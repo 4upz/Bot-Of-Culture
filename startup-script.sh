@@ -27,6 +27,9 @@ BUILD_ID=$(curl -H "Metadata-Flavor: Google" \
 
 IMAGE="gcr.io/bot-of-culture/bot-of-culture:${BUILD_ID}"
 
+# Refuse a rollout before touching the healthy container if configuration is missing.
+test -r /etc/bot-of-culture/runtime.env
+
 # Clean up old Docker images to free space
 echo "🧹 Cleaning up old Docker images..."
 docker system prune -af || true
