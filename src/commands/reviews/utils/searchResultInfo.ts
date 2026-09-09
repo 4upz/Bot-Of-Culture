@@ -1,3 +1,4 @@
+import { discordVisibilityWhere, redactDiscordSource } from '../../../reviews/writeStore'
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -143,7 +144,7 @@ export async function sendSearchResultInfo(
     }
 
     resultInfoEmbed = resultInfoEmbed.addFields([
-      { name: 'Server Score', value: scoreDisplay, inline: true },
+      { name: 'Global Score', value: scoreDisplay, inline: true },
     ])
 
     if (type === 'game') {
@@ -197,12 +198,13 @@ export async function getReviewsForType(
   bot: BotClient,
 ): Promise<IReview[]> {
   const collection = bot.getCollection(type as ReviewType)
-  return await collection.findMany({
+  const reviews = await collection.findMany({
     where: {
       [`${type}Id`]: id,
-      guildId,
+      ...discordVisibilityWhere(guildId),
     },
   })
+  return Promise.all(reviews.map((review: any) => redactDiscordSource(review, collection, type as ReviewType, guildId)))
 }
 
 export function calculatePropertyAverage(

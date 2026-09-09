@@ -28,17 +28,18 @@ export async function deleteReviewForTarget(
   targetId: string,
 ) {
   const client = interaction.client as BotClient
-  const { user, guildId } = interaction
+  const { user } = interaction
 
   try {
     const collection = client.getCollection(type)
     if (!collection) throw new Error('Invalid collection name')
     // Grab id of review document if it exists
     const review = await (<any>collection).findFirst({
-      where: { [`${type}Id`]: targetId, userId: user.id, guildId: guildId },
+      where: { [`${type}Id`]: targetId, userId: user.id },
     })
     if (review) {
       await (<any>collection).delete({ where: { id: review.id } })
+      ;(client as any).webRevision?.bump()
       await interaction.editReply({
         content: `Your review for that ${type} was successfully deleted! 🎉`,
         components: [],

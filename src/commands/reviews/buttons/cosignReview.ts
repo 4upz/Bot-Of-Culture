@@ -1,3 +1,4 @@
+import { canDisplayReview } from '../../../reviews/writeStore'
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -28,11 +29,10 @@ async function handleCosignReview(interaction: MessageComponentInteraction) {
       where: {
         userId: originalUserId,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 
-    if (!originalReview) {
+    if (!canDisplayReview(originalReview, interaction.guildId)) {
       await interaction.reply({
         content: 'Sorry, the original review could not be found.',
         ephemeral: true,
@@ -45,7 +45,6 @@ async function handleCosignReview(interaction: MessageComponentInteraction) {
       where: {
         userId: interaction.user.id,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 

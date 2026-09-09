@@ -1,3 +1,5 @@
+import { publicReviewUrl } from '../../../reviews/preferences'
+import { canDisplayReview, redactDiscordSource, rememberMediaTitle, saveGlobalReview } from '../../../reviews/writeStore'
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -20,33 +22,6 @@ export async function saveSharedReview(
   const bot = interaction.client as BotClient
   const collection = bot.getCollection(type)
 
-  const data: any = {
-    userId: interaction.user.id,
-    username: interaction.user.username,
-    guildId: interaction.guildId,
-    score: originalReview.score,
-    sharedFromUserId: originalReview.userId,
-    sharedFromUsername: originalReview.username,
-    sharedFromComment: originalReview.comment,
-    isQuote,
-  }
-
-  data[`${type}Id`] = mediaId
-
-  if (isQuote && userComment) {
-    data.comment = userComment
-  } else {
-    data.comment = null
-  }
-
-  // Copy type-specific fields
-  if (type === 'game' && originalReview.hoursPlayed) {
-    data.hoursPlayed = originalReview.hoursPlayed
-  }
-  if (type === 'music' && originalReview.replayability) {
-    data.replayability = originalReview.replayability
-  }
-
   try {
     // Defer with ephemeral reply for all cases
     if (interaction.deferred || interaction.replied) {
@@ -55,27 +30,49 @@ export async function saveSharedReview(
       await interaction.deferReply({ ephemeral: true })
     }
 
-    // Check if review exists and update or create
-    const existingReview = await collection.findFirst({
-      where: {
-        userId: interaction.user.id,
-        [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
-      },
-    })
-
-    let review
-    let statusReply
-    if (existingReview) {
-      review = await collection.update({
-        where: { id: existingReview.id },
-        data,
-      })
-      statusReply = 'Review successfully updated!'
-    } else {
-      review = await collection.create({ data })
-      statusReply = 'Review successfully added! 🎉'
+    // Recheck the source on submission: buttons/modals may outlive it.
+    originalReview = await collection.findFirst({ where: { userId: originalReview.userId, [`${type}Id`]: mediaId } })
+    if (!canDisplayReview(originalReview, interaction.guildId)) {
+      await interaction.editReply('Sorry, the original review is no longer available here.')
+      return
     }
+    const data: any = {
+      userId: interaction.user.id,
+      username: interaction.user.username,
+      guildId: interaction.guildId,
+      score: originalReview.score,
+      sharedFromUserId: originalReview.userId,
+      sharedFromUsername: originalReview.username,
+      sharedFromComment: originalReview.comment,
+      isQuote,
+    }
+
+    data[`${type}Id`] = mediaId
+
+    if (isQuote && userComment) {
+      data.comment = userComment
+    } else {
+      data.comment = null
+    }
+
+    // Copy type-specific fields
+    if (type === 'game') {
+      data.hoursPlayed = originalReview.hoursPlayed ?? null
+    }
+    if (type === 'music' && originalReview.replayability) {
+      data.replayability = originalReview.replayability
+    }
+
+    const result = await saveGlobalReview(collection, type, data, originalReview.isPrivate === true)
+    let review = result.review
+    const profileUrl = publicReviewUrl('user', interaction.user.id)
+    const statusReply = result.message + (profileUrl ? ` [View your review profile](${profileUrl})` : '')
+    if (originalReview.isPrivate === true) (bot as any).webRevision?.bump()
+    if (!canDisplayReview(review, interaction.guildId)) {
+      await interaction.editReply(`${statusReply} Your private review was not posted outside its original server.`)
+      return
+    }
+    review = await redactDiscordSource(review, collection, type, interaction.guildId)
 
     // Fetch the media details and broadcast
     let reviewTarget
@@ -88,6 +85,8 @@ export async function saveSharedReview(
     } else {
       reviewTarget = await bot.movies.getSeriesById(mediaId)
     }
+
+    await rememberMediaTitle(bot.db, type, mediaId, reviewTarget)
 
     if (!reviewTarget) {
       await interaction.editReply(
@@ -172,8 +171,9 @@ export async function saveSharedReview(
 
         // Get the original user's avatar
         const originalUser = await bot.users.fetch(originalReview.userId)
+        const safeOriginalReview = await redactDiscordSource(originalReview, collection, type, interaction.guildId)
         const updatedEmbed = createReviewEmbed(
-          originalReview,
+          safeOriginalReview,
           reviewTarget,
           originalUser.avatarURL(),
           type,

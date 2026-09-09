@@ -1,3 +1,4 @@
+import { canDisplayReview } from '../../../reviews/writeStore'
 import { MessageComponentInteraction } from 'discord.js'
 import { BotClient } from '../../../Bot'
 import { ReviewType } from '../../../utils/types'
@@ -23,11 +24,10 @@ async function handleConfirmCosign(interaction: MessageComponentInteraction) {
       where: {
         userId: originalUserId,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 
-    if (!originalReview) {
+    if (!canDisplayReview(originalReview, interaction.guildId)) {
       await interaction.reply({
         content: 'Sorry, the original review could not be found.',
         ephemeral: true,

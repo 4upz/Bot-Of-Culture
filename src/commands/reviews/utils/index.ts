@@ -1,3 +1,4 @@
+import { publicReviewUrl } from '../../../reviews/preferences'
 import {
   ActionRowBuilder,
   AnyComponentBuilder,
@@ -17,11 +18,8 @@ import {
 import dayjs from 'dayjs'
 import {
   GameReview,
-  MovieReview,
   MusicReview,
-  Prisma,
   Replayability,
-  SeriesReview,
 } from '@prisma/client'
 import {
   gameReviewChoices,
@@ -38,118 +36,7 @@ import {
 } from '../../../utils/types'
 import { toNormalDate } from '../../../utils/helpers'
 
-type ReviewCreateResult = {
-  message: string
-  review: MovieReview | SeriesReview
-}
-
-async function saveMovieReview(
-  data: Prisma.MovieReviewCreateInput,
-  bot: BotClient,
-): Promise<ReviewCreateResult> {
-  let review = await bot.db.movieReview.findFirst({
-    where: {
-      userId: data.userId,
-      movieId: data.movieId,
-      guildId: data.guildId,
-    },
-  })
-
-  if (review) {
-    review = await bot.db.movieReview.update({
-      where: { id: review.id },
-      data,
-    })
-    return { review, message: 'Review successfully updated!' }
-  } else {
-    review = await bot.db.movieReview.create({ data })
-    return {
-      review: review as MovieReview,
-      message: 'Review successfully added! 🎉',
-    }
-  }
-}
-
-async function saveSeriesReview(
-  data: Prisma.SeriesReviewCreateInput,
-  bot: BotClient,
-): Promise<ReviewCreateResult> {
-  let review = await bot.db.seriesReview.findFirst({
-    where: {
-      userId: data.userId,
-      seriesId: data.seriesId,
-      guildId: data.guildId,
-    },
-  })
-
-  if (review) {
-    review = await bot.db.seriesReview.update({
-      where: { id: review.id },
-      data,
-    })
-    return { review, message: 'Review successfully updated!' }
-  } else {
-    review = await bot.db.seriesReview.create({ data })
-    return {
-      review: review as SeriesReview,
-      message: 'Review successfully added! 🎉',
-    }
-  }
-}
-
-async function saveGameReview(
-  data: Prisma.GameReviewCreateInput,
-  bot: BotClient,
-) {
-  let review = await bot.db.gameReview.findFirst({
-    where: {
-      userId: data.userId,
-      gameId: data.gameId,
-      guildId: data.guildId,
-    },
-  })
-
-  if (review) {
-    review = await bot.db.gameReview.update({
-      where: { id: review.id },
-      data,
-    })
-    return { review, message: 'Review successfully updated!' }
-  } else {
-    review = await bot.db.gameReview.create({ data })
-    return {
-      review: review as GameReview,
-      message: 'Review successfully added! 🎉',
-    }
-  }
-}
-
-async function saveMusicReview(
-  data: Prisma.MusicReviewCreateInput,
-  bot: BotClient,
-) {
-  let review = await bot.db.musicReview.findFirst({
-    where: {
-      userId: data.userId,
-      musicId: data.musicId,
-      guildId: data.guildId,
-    },
-  })
-
-  if (review) {
-    review = await bot.db.musicReview.update({
-      where: { id: review.id },
-      data,
-    })
-    return { review, message: 'Review successfully updated!' }
-  } else {
-    review = await bot.db.musicReview.create({ data })
-    return {
-      review: review as MusicReview,
-      message: 'Review successfully added! 🎉',
-    }
-  }
-}
+import { canDisplayReview, discordVisibilityWhere, redactDiscordSource, rememberMediaTitle, saveGlobalReview } from '../../../reviews/writeStore'
 
 export async function getSearchResultsForType(
   type: ReviewType,
@@ -236,7 +123,6 @@ export async function promptReviewComment(interaction: StringSelectMenuInteracti
     .findFirst({
       where: {
         userId: interaction.user.id,
-        guildId: interaction.guildId,
         [`${type}Id`]: targetId,
       },
     })
@@ -297,7 +183,7 @@ export async function promptReviewComment(interaction: StringSelectMenuInteracti
       .setStyle(TextInputStyle.Short)
       .setRequired(false)
 
-    if (existingReview)
+    if (existingReview?.replayability)
       replayabilityInput = replayabilityInput.setValue(
         existingReview.replayability,
       )
@@ -358,41 +244,20 @@ export async function saveReview(
   try {
     let reviewTarget, review, statusReply
 
-    if (type === 'movie') {
-      const result = await saveMovieReview(
-        data as unknown as Prisma.MovieReviewCreateInput,
-        bot,
-      )
-      review = result.review
-      statusReply = result.message
-      reviewTarget = await bot.movies.getById(data.movieId.toString())
-    } else if (type === 'game') {
-      const result = await saveGameReview(
-        data as unknown as Prisma.GameReviewCreateInput,
-        bot,
-      )
-      review = result.review
-      statusReply = result.message
-      reviewTarget = await bot.games.getById(data.gameId.toString())
-    } else if (type === 'music') {
-      const result = await saveMusicReview(
-        data as unknown as Prisma.MusicReviewCreateInput,
-        bot,
-      )
-      review = result.review
-      statusReply = result.message
-      reviewTarget = await bot.music.getById(data.musicId.toString())
-    } else {
-      const result = await saveSeriesReview(
-        data as unknown as Prisma.SeriesReviewCreateInput,
-        bot,
-      )
-      review = result.review
-      statusReply = result.message
-      reviewTarget = await bot.movies.getSeriesById(data.seriesId.toString())
+    const result = await saveGlobalReview(bot.getCollection(type as ReviewType), type as ReviewType, data)
+    review = result.review
+    statusReply = result.message
+    const profileUrl = publicReviewUrl('user', interaction.user.id)
+    if (profileUrl) statusReply += ` [View your review profile](${profileUrl})`
+    reviewTarget = await getByIdForType(type as ReviewType, String(data[`${type}Id`]), bot)
+    await rememberMediaTitle(bot.db, type as ReviewType, String(data[`${type}Id`]), reviewTarget)
+    if (!canDisplayReview(review, interaction.guildId)) {
+      await interaction.editReply(`${statusReply} Your private review was not posted outside its original server.`)
+      return
     }
+    review = await redactDiscordSource(review, bot.getCollection(type as ReviewType), type as ReviewType, interaction.guildId)
 
-    if (!comment) review.comment = '*No comment added*'
+    if (!review.comment) review.comment = '*No comment added*'
 
     // Calculate share/quote count for this review
     const shareQuoteCount = await getShareQuoteCount(
@@ -581,6 +446,8 @@ export function createReviewEmbed(
 
   embed.addFields([{ name: 'Score', value: formattedScore }])
 
+  if ((review as any).sourceUnavailable) embed.addFields([{ name: 'Source review', value: 'Source review unavailable' }])
+
   // Add attribution field if this review was shared or quoted
   if ((review as any).sharedFromUserId) {
     const shareType = (review as any).isQuote ? 'Quoted' : 'Shared'
@@ -683,7 +550,7 @@ export async function getShareQuoteCount(
   const sharedReviews = await collection.findMany({
     where: {
       [`${type}Id`]: mediaId,
-      guildId,
+      ...discordVisibilityWhere(guildId),
       sharedFromUserId: userId,
     },
   })

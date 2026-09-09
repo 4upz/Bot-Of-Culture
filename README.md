@@ -4,7 +4,7 @@ Discord Bot curated for the Men of Culture Discord Server using Discord.JS
 
 ## Installation Requirements
 If you want to run your own version of Bot of Culture locally, it's a fairly straightforward process. It requires that you set up its 4 main dependencies:
-- [Node.js](https://nodejs.org/en/) >= 16 (tip: use nvm or n to manage multiple Node versions)
+- [Node.js](https://nodejs.org/en/) >= 18 (tip: use nvm or n to manage multiple Node versions)
 - A [Discord App](https://discord.com/developers/docs/getting-started) with API credentials
 - A [MongoDb](https://www.mongodb.com/atlas/database) Instance for Prisma to use
 - Access keys to the Movie and TV APIs
@@ -140,3 +140,43 @@ The information in this ID isn't random. This example includes underscore-separa
 This neat trick allows us to keep track of the in-progress review information for a user without having to save anything in-memory! That way, even if the user decides to respond to the message later, it will always save the current state of the review along with information about the media that they were reviewing. This is used throughout the app to keep track of necessary parameters before we save  information to the database. By default, Discord interactions usually contains other information such as the server ID, user ID, time, etc that may also be used.
 
 All multi-step message interactions use this format. So if you're looking to implement new behavior for the review flow or a completely new one, make sure to keep this in mind!
+
+## Read-only review browser
+
+This release changes review identity to one review per user and media globally.
+Before running it, follow [the migration and rollback runbook](docs/review-web-operations.md).
+`REVIEW_MIGRATION_READY=true` is required at startup after the approved migration,
+verification, and global unique indexes. `WEB_ENABLED=false` keeps the viewer off;
+set it to `true` only with `PUBLIC_WEB_BASE_URL` configured and Discord's **Server
+Members Intent** enabled for the bot. The code requests that privileged intent
+only while the viewer is enabled. No Message Content intent is needed.
+
+Public routes are `/u/:discordUserId` and `/g/:guildId`. Discord `/reviews profile`,
+`/reviews server`, and `/reviews visibility` provide links and a global web opt-out.
+Reviews remain authored in Discord. Anonymous responses are never cached and
+search engines are instructed not to index them. Guild pages fail closed during
+incomplete, disconnected, or stale membership synchronization. A single bot/web
+process is required for immediate write invalidation. Open pages revalidate on
+focus and every 30 seconds; already received content cannot be retracted.
+
+For GCE, provision `/etc/bot-of-culture/runtime.env` separately (do not commit it),
+containing the readiness flag, web flag, public HTTPS URL and port. The startup
+scripts publish container port 8080 on **loopback only**. Configure an HTTPS reverse
+proxy to `127.0.0.1:8080`; do not expose the application port directly. The app does
+not trust forwarded IP headers by default, so the rate limit applies collectively
+behind a proxy. Configure proxy limits for the expected traffic. This repository
+change does not provision DNS, TLS, firewall rules, enable an intent, register
+commands, or deploy anything.
+
+Run `yarn prisma:generate`, `yarn build`, and `yarn test` for local checks. MongoDB
+integration fixtures require an explicitly configured disposable test replica set;
+they never use the production database environment variable.
+
+Review comments keep their original Discord Markdown in storage. The viewer renders
+bold, italics, underline, strikethrough, dash/star lists, quotes, code, line breaks,
+HTTP(S) links and expandable spoilers. It escapes raw HTML and leaves unsupported
+syntax readable. User/role/channel mentions display an ID-based label, custom
+emoji display `:name:`, and Discord-only timestamps/commands remain literal text;
+these do not resolve identities or send notifications. Code language names do not
+load syntax-highlighting scripts. Formatting is a safe subset, not an embedded
+Discord client.

@@ -39,7 +39,11 @@ export interface SubcommandExecutors {
 
 export interface IReview {
   id: string
-  guildId: string
+  guildId?: string | null
+  originGuildId?: string | null
+  originSource?: string | null
+  isPrivate?: boolean
+  updatedAt?: Date | null
   score: number
   comment?: string
   userId: string
