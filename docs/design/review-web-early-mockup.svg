@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1046" viewBox="0 0 1480 1046" role="img" aria-labelledby="title desc"><title id="title">Bot of Culture review browser — early mockup</title><desc id="desc">Mock server library on desktop and a global review profile on mobile. All people, titles, reviews and dates are fictional sample content. Library groups reviews by title, with a subtle Reviewed in another server text label only on an outside-origin review. An older game review edited on September 9 remains below a movie created September 8; edit dates never reorder reviews or title groups. Title search is confirmed for launch and searches stored title names. Search stays on the same screen and more results load automatically while scrolling. Neutral dark surfaces and a restrained blurple accent feel familiar in Discord’s browser without using Discord branding. Individual reviews use whole stars on the existing 1–5 scale. Server title summaries average the sample reviews: movie 3.5 stars from two reviews, game 5 stars from one. Profiles show only individual ratings. Visibility is managed through Discord. Category filters use one compact strip with a blurple underline on All; screens use server and profile headings without the internal bot name.</desc><style>text{font-family:Arial,Helvetica,sans-serif} .small{font-size:13px;fill:#b5bac1}.body{font-size:15px;fill:#dbdee1}.heading{font-size:24px;font-weight:700;fill:#f2f3f5}.label{font-size:12px;letter-spacing:1.6px;fill:#b5beff}</style>
+<rect x="0" y="0" width="1480" height="1046" rx="0" fill="#e9edf1"/>
+<text x="44" y="43" font-size="15" fill="#263b4b" font-weight="700">REVIEW BROWSER / DESIGN STUDY</text>
+<text x="44" y="72" font-size="15" fill="#536776" font-weight="400">Early design • all names, titles, reviews and dates are mock data</text>
+<text x="44" y="108" font-size="12" fill="#536776" font-weight="700">SERVER LIBRARY / DESKTOP</text>
+<text x="1048" y="108" font-size="12" fill="#536776" font-weight="700">GLOBAL PROFILE / MOBILE</text>
+<rect x="44" y="128" width="960" height="822" rx="16" fill="#313338"/>
+<rect x="1048" y="128" width="388" height="782" rx="22" fill="#313338"/>
+<text x="76" y="164" font-size="16" fill="#f2f3f5" font-weight="700">The Culture Club</text>
+<path d="M44 186 H1004" stroke="#42444b"/>
+<path d="M76 299 H512" stroke="#42444b"/>
+<path d="M76 299 H119" stroke="#5865f2" stroke-width="3"/>
+<text x="88" y="284" font-size="14" fill="#b5beff" font-weight="700">All</text>
+<text x="150" y="284" font-size="14" fill="#b5bac1" font-weight="400">Movies</text>
+<text x="244" y="284" font-size="14" fill="#b5bac1" font-weight="400">TV series</text>
+<text x="354" y="284" font-size="14" fill="#b5bac1" font-weight="400">Games</text>
+<text x="452" y="284" font-size="14" fill="#b5bac1" font-weight="400">Music</text>
+<text x="771" y="285" font-size="13" fill="#b5bac1" font-weight="400">Newest reviews first</text>
+<rect x="76" y="323" width="896" height="293" rx="11" fill="#2b2d31"/>
+<rect x="96" y="343" width="58" height="79" rx="5" fill="#4e5058"/>
+<text x="103" y="375" font-size="11" fill="#dbdee1" font-weight="700">LAST</text>
+<text x="103" y="395" font-size="12" fill="#dbdee1" font-weight="700">LIGHT</text>
+<text x="175" y="363" font-size="22" fill="#f2f3f5" font-weight="700">The Last Light</text>
+<text x="175" y="389" font-size="13" fill="#b5bac1" font-weight="400">Movie · 2026</text>
+<path d="M96 431 H952" stroke="#42444b"/>
+<circle cx="113" cy="452" r="16" fill="#4e5058"/>
+<text x="103" y="457" font-size="12" fill="#f2f3f5" font-weight="700">MA</text>
+<text x="142" y="454" font-size="15" fill="#b5beff" font-weight="700">Maya</text>
+<g class="star-rating" role="img" aria-label="4 out of 5 stars" data-value="4"><title>4 out of 5 stars</title>
+<polygon points="864.00,440.32 866.02,445.22 871.30,445.63 867.27,449.06 868.51,454.21 864.00,451.44 859.49,454.21 860.73,449.06 856.70,445.63 861.98,445.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-1-0"><rect x="856" y="439" width="16" height="18"/></clipPath></defs>
+<polygon points="864.00,440.32 866.02,445.22 871.30,445.63 867.27,449.06 868.51,454.21 864.00,451.44 859.49,454.21 860.73,449.06 856.70,445.63 861.98,445.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-1-0)"/>
+<polygon points="884.00,440.32 886.02,445.22 891.30,445.63 887.27,449.06 888.51,454.21 884.00,451.44 879.49,454.21 880.73,449.06 876.70,445.63 881.98,445.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-1-1"><rect x="876" y="439" width="16" height="18"/></clipPath></defs>
+<polygon points="884.00,440.32 886.02,445.22 891.30,445.63 887.27,449.06 888.51,454.21 884.00,451.44 879.49,454.21 880.73,449.06 876.70,445.63 881.98,445.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-1-1)"/>
+<polygon points="904.00,440.32 906.02,445.22 911.30,445.63 907.27,449.06 908.51,454.21 904.00,451.44 899.49,454.21 900.73,449.06 896.70,445.63 901.98,445.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-1-2"><rect x="896" y="439" width="16" height="18"/></clipPath></defs>
+<polygon points="904.00,440.32 906.02,445.22 911.30,445.63 907.27,449.06 908.51,454.21 904.00,451.44 899.49,454.21 900.73,449.06 896.70,445.63 901.98,445.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-1-2)"/>
+<polygon points="924.00,440.32 926.02,445.22 931.30,445.63 927.27,449.06 928.51,454.21 924.00,451.44 919.49,454.21 920.73,449.06 916.70,445.63 921.98,445.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-1-3"><rect x="916" y="439" width="16" height="18"/></clipPath></defs>
+<polygon points="924.00,440.32 926.02,445.22 931.30,445.63 927.27,449.06 928.51,454.21 924.00,451.44 919.49,454.21 920.73,449.06 916.70,445.63 921.98,445.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-1-3)"/>
+<polygon points="944.00,440.32 946.02,445.22 951.30,445.63 947.27,449.06 948.51,454.21 944.00,451.44 939.49,454.21 940.73,449.06 936.70,445.63 941.98,445.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+</g>
+<text x="142" y="478" font-size="15" fill="#dbdee1" font-weight="400">The ending stayed with me. Beautifully restrained.</text>
+<text class="review-metadata" x="142" y="502" font-size="12" fill="#b5bac1" font-weight="400">Sep 8, 2026</text>
+<path d="M142 524 H952" stroke="#42444b"/>
+<circle cx="113" cy="544" r="16" fill="#59535b"/>
+<text x="103" y="549" font-size="12" fill="#f2f3f5" font-weight="700">JO</text>
+<text x="142" y="546" font-size="15" fill="#b5beff" font-weight="700">Jonah</text>
+<text x="204" y="546" font-size="12" fill="#b5bac1" font-weight="400">Reviewed in another server</text>
+<g class="star-rating" role="img" aria-label="3 out of 5 stars" data-value="3"><title>3 out of 5 stars</title>
+<polygon points="864.00,532.32 866.02,537.22 871.30,537.63 867.27,541.06 868.51,546.21 864.00,543.44 859.49,546.21 860.73,541.06 856.70,537.63 861.98,537.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-2-0"><rect x="856" y="531" width="16" height="18"/></clipPath></defs>
+<polygon points="864.00,532.32 866.02,537.22 871.30,537.63 867.27,541.06 868.51,546.21 864.00,543.44 859.49,546.21 860.73,541.06 856.70,537.63 861.98,537.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-2-0)"/>
+<polygon points="884.00,532.32 886.02,537.22 891.30,537.63 887.27,541.06 888.51,546.21 884.00,543.44 879.49,546.21 880.73,541.06 876.70,537.63 881.98,537.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-2-1"><rect x="876" y="531" width="16" height="18"/></clipPath></defs>
+<polygon points="884.00,532.32 886.02,537.22 891.30,537.63 887.27,541.06 888.51,546.21 884.00,543.44 879.49,546.21 880.73,541.06 876.70,537.63 881.98,537.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-2-1)"/>
+<polygon points="904.00,532.32 906.02,537.22 911.30,537.63 907.27,541.06 908.51,546.21 904.00,543.44 899.49,546.21 900.73,541.06 896.70,537.63 901.98,537.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-2-2"><rect x="896" y="531" width="16" height="18"/></clipPath></defs>
+<polygon points="904.00,532.32 906.02,537.22 911.30,537.63 907.27,541.06 908.51,546.21 904.00,543.44 899.49,546.21 900.73,541.06 896.70,537.63 901.98,537.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-2-2)"/>
+<polygon points="924.00,532.32 926.02,537.22 931.30,537.63 927.27,541.06 928.51,546.21 924.00,543.44 919.49,546.21 920.73,541.06 916.70,537.63 921.98,537.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<polygon points="944.00,532.32 946.02,537.22 951.30,537.63 947.27,541.06 948.51,546.21 944.00,543.44 939.49,546.21 940.73,541.06 936.70,537.63 941.98,537.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+</g>
+<text x="142" y="570" font-size="15" fill="#dbdee1" font-weight="400">A slow start, but the final act earns it.</text>
+<text class="review-metadata" x="142" y="594" font-size="12" fill="#b5bac1" font-weight="400">Sep 7, 2026</text>
+<rect x="76" y="632" width="896" height="201" rx="11" fill="#2b2d31"/>
+<rect x="96" y="652" width="58" height="79" rx="5" fill="#59535b"/>
+<text x="103" y="684" font-size="11" fill="#dbdee1" font-weight="700">EMBER</text>
+<text x="103" y="704" font-size="12" fill="#dbdee1" font-weight="700">VALE</text>
+<text x="175" y="672" font-size="22" fill="#f2f3f5" font-weight="700">Ember Vale</text>
+<text x="175" y="698" font-size="13" fill="#b5bac1" font-weight="400">Game · 2025</text>
+<path d="M96 740 H952" stroke="#42444b"/>
+<circle cx="113" cy="761" r="16" fill="#4e5058"/>
+<text x="103" y="766" font-size="12" fill="#f2f3f5" font-weight="700">MA</text>
+<text x="142" y="763" font-size="15" fill="#b5beff" font-weight="700">Maya</text>
+<g class="star-rating" role="img" aria-label="5 out of 5 stars" data-value="5"><title>5 out of 5 stars</title>
+<polygon points="864.00,749.32 866.02,754.22 871.30,754.63 867.27,758.06 868.51,763.21 864.00,760.44 859.49,763.21 860.73,758.06 856.70,754.63 861.98,754.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-3-0"><rect x="856" y="748" width="16" height="18"/></clipPath></defs>
+<polygon points="864.00,749.32 866.02,754.22 871.30,754.63 867.27,758.06 868.51,763.21 864.00,760.44 859.49,763.21 860.73,758.06 856.70,754.63 861.98,754.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-3-0)"/>
+<polygon points="884.00,749.32 886.02,754.22 891.30,754.63 887.27,758.06 888.51,763.21 884.00,760.44 879.49,763.21 880.73,758.06 876.70,754.63 881.98,754.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-3-1"><rect x="876" y="748" width="16" height="18"/></clipPath></defs>
+<polygon points="884.00,749.32 886.02,754.22 891.30,754.63 887.27,758.06 888.51,763.21 884.00,760.44 879.49,763.21 880.73,758.06 876.70,754.63 881.98,754.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-3-1)"/>
+<polygon points="904.00,749.32 906.02,754.22 911.30,754.63 907.27,758.06 908.51,763.21 904.00,760.44 899.49,763.21 900.73,758.06 896.70,754.63 901.98,754.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-3-2"><rect x="896" y="748" width="16" height="18"/></clipPath></defs>
+<polygon points="904.00,749.32 906.02,754.22 911.30,754.63 907.27,758.06 908.51,763.21 904.00,760.44 899.49,763.21 900.73,758.06 896.70,754.63 901.98,754.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-3-2)"/>
+<polygon points="924.00,749.32 926.02,754.22 931.30,754.63 927.27,758.06 928.51,763.21 924.00,760.44 919.49,763.21 920.73,758.06 916.70,754.63 921.98,754.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-3-3"><rect x="916" y="748" width="16" height="18"/></clipPath></defs>
+<polygon points="924.00,749.32 926.02,754.22 931.30,754.63 927.27,758.06 928.51,763.21 924.00,760.44 919.49,763.21 920.73,758.06 916.70,754.63 921.98,754.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-3-3)"/>
+<polygon points="944.00,749.32 946.02,754.22 951.30,754.63 947.27,758.06 948.51,763.21 944.00,760.44 939.49,763.21 940.73,758.06 936.70,754.63 941.98,754.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-3-4"><rect x="936" y="748" width="16" height="18"/></clipPath></defs>
+<polygon points="944.00,749.32 946.02,754.22 951.30,754.63 947.27,758.06 948.51,763.21 944.00,760.44 939.49,763.21 940.73,758.06 936.70,754.63 941.98,754.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-3-4)"/>
+</g>
+<text x="142" y="787" font-size="15" fill="#dbdee1" font-weight="400">One more run turned into forty hours.</text>
+<text class="review-metadata" x="142" y="811" font-size="12" fill="#b5bac1" font-weight="400">Sep 6, 2026<tspan dx="10">·</tspan><tspan dx="10">42h played</tspan><tspan dx="10">·</tspan><tspan dx="10">Edited Sep 9, 2026</tspan></text>
+<text x="524" y="875" font-size="13" fill="#b5bac1" font-weight="400" text-anchor="middle">Loading more titles…</text>
+<text x="76" y="916" font-size="12" fill="#b5bac1" font-weight="400">Your reviews are public by default. Hide yours with /reviews visibility hidden in Discord.</text>
+<text x="76" y="938" font-size="11" fill="#b5bac1" font-weight="400">Members synced just now</text>
+<text x="952" y="938" font-size="12" fill="#b5beff" font-weight="400" text-anchor="end">Visibility help</text>
+<text x="1072" y="164" font-size="16" fill="#f2f3f5" font-weight="700">Review profile</text>
+<text x="1412" y="164" font-size="12" fill="#b5bac1" font-weight="400" text-anchor="end">Public</text>
+<path d="M1048 186 H1436" stroke="#42444b"/>
+<circle cx="1088" cy="227" r="16" fill="#4e5058"/>
+<text x="1078" y="232" font-size="12" fill="#f2f3f5" font-weight="700">MA</text>
+<text x="1116" y="229" font-size="25" fill="#f2f3f5" font-weight="700">Maya</text>
+<path d="M1072 346 H1412" stroke="#42444b"/>
+<path d="M1072 346 H1114" stroke="#5865f2" stroke-width="3"/>
+<text x="1084" y="329" font-size="13" fill="#b5beff" font-weight="700">All</text>
+<text x="1134" y="329" font-size="13" fill="#b5bac1" font-weight="400">Movies</text>
+<text x="1201" y="329" font-size="13" fill="#b5bac1" font-weight="400">TV series</text>
+<text x="1280" y="329" font-size="13" fill="#b5bac1" font-weight="400">Games</text>
+<text x="1355" y="329" font-size="13" fill="#b5bac1" font-weight="400">Music</text>
+<text x="1072" y="371" font-size="12" fill="#b5bac1" font-weight="400">Newest reviews first</text>
+<rect x="1072" y="391" width="340" height="162" rx="10" fill="#2b2d31"/>
+<text x="1088" y="418" font-size="11" fill="#b5beff" font-weight="700">MOVIE</text>
+<text x="1088" y="450" font-size="21" fill="#f2f3f5" font-weight="700">The Last Light</text>
+<g class="star-rating" role="img" aria-label="4 out of 5 stars" data-value="4"><title>4 out of 5 stars</title>
+<polygon points="1319.00,438.28 1320.77,442.56 1325.39,442.92 1321.86,445.93 1322.95,450.44 1319.00,448.01 1315.05,450.44 1316.14,445.93 1312.61,442.92 1317.23,442.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-4-0"><rect x="1312.0" y="437" width="14" height="16"/></clipPath></defs>
+<polygon points="1319.00,438.28 1320.77,442.56 1325.39,442.92 1321.86,445.93 1322.95,450.44 1319.00,448.01 1315.05,450.44 1316.14,445.93 1312.61,442.92 1317.23,442.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-4-0)"/>
+<polygon points="1336.50,438.28 1338.27,442.56 1342.89,442.92 1339.36,445.93 1340.45,450.44 1336.50,448.01 1332.55,450.44 1333.64,445.93 1330.11,442.92 1334.73,442.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-4-1"><rect x="1329.5" y="437" width="14" height="16"/></clipPath></defs>
+<polygon points="1336.50,438.28 1338.27,442.56 1342.89,442.92 1339.36,445.93 1340.45,450.44 1336.50,448.01 1332.55,450.44 1333.64,445.93 1330.11,442.92 1334.73,442.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-4-1)"/>
+<polygon points="1354.00,438.28 1355.77,442.56 1360.39,442.92 1356.86,445.93 1357.95,450.44 1354.00,448.01 1350.05,450.44 1351.14,445.93 1347.61,442.92 1352.23,442.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-4-2"><rect x="1347.0" y="437" width="14" height="16"/></clipPath></defs>
+<polygon points="1354.00,438.28 1355.77,442.56 1360.39,442.92 1356.86,445.93 1357.95,450.44 1354.00,448.01 1350.05,450.44 1351.14,445.93 1347.61,442.92 1352.23,442.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-4-2)"/>
+<polygon points="1371.50,438.28 1373.27,442.56 1377.89,442.92 1374.36,445.93 1375.45,450.44 1371.50,448.01 1367.55,450.44 1368.64,445.93 1365.11,442.92 1369.73,442.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-4-3"><rect x="1364.5" y="437" width="14" height="16"/></clipPath></defs>
+<polygon points="1371.50,438.28 1373.27,442.56 1377.89,442.92 1374.36,445.93 1375.45,450.44 1371.50,448.01 1367.55,450.44 1368.64,445.93 1365.11,442.92 1369.73,442.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-4-3)"/>
+<polygon points="1389.00,438.28 1390.77,442.56 1395.39,442.92 1391.86,445.93 1392.95,450.44 1389.00,448.01 1385.05,450.44 1386.14,445.93 1382.61,442.92 1387.23,442.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+</g>
+<text x="1088" y="480" font-size="15" fill="#dbdee1" font-weight="400">The ending stayed with me.</text>
+<text x="1088" y="502" font-size="15" fill="#dbdee1" font-weight="400">Beautifully restrained.</text>
+
+<rect x="1072" y="569" width="340" height="162" rx="10" fill="#2b2d31"/>
+<text x="1088" y="596" font-size="11" fill="#b5beff" font-weight="700">GAME</text>
+<text x="1088" y="628" font-size="21" fill="#f2f3f5" font-weight="700">Ember Vale</text>
+<g class="star-rating" role="img" aria-label="5 out of 5 stars" data-value="5"><title>5 out of 5 stars</title>
+<polygon points="1319.00,616.28 1320.77,620.56 1325.39,620.92 1321.86,623.93 1322.95,628.44 1319.00,626.01 1315.05,628.44 1316.14,623.93 1312.61,620.92 1317.23,620.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-5-0"><rect x="1312.0" y="615" width="14" height="16"/></clipPath></defs>
+<polygon points="1319.00,616.28 1320.77,620.56 1325.39,620.92 1321.86,623.93 1322.95,628.44 1319.00,626.01 1315.05,628.44 1316.14,623.93 1312.61,620.92 1317.23,620.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-5-0)"/>
+<polygon points="1336.50,616.28 1338.27,620.56 1342.89,620.92 1339.36,623.93 1340.45,628.44 1336.50,626.01 1332.55,628.44 1333.64,623.93 1330.11,620.92 1334.73,620.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-5-1"><rect x="1329.5" y="615" width="14" height="16"/></clipPath></defs>
+<polygon points="1336.50,616.28 1338.27,620.56 1342.89,620.92 1339.36,623.93 1340.45,628.44 1336.50,626.01 1332.55,628.44 1333.64,623.93 1330.11,620.92 1334.73,620.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-5-1)"/>
+<polygon points="1354.00,616.28 1355.77,620.56 1360.39,620.92 1356.86,623.93 1357.95,628.44 1354.00,626.01 1350.05,628.44 1351.14,623.93 1347.61,620.92 1352.23,620.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-5-2"><rect x="1347.0" y="615" width="14" height="16"/></clipPath></defs>
+<polygon points="1354.00,616.28 1355.77,620.56 1360.39,620.92 1356.86,623.93 1357.95,628.44 1354.00,626.01 1350.05,628.44 1351.14,623.93 1347.61,620.92 1352.23,620.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-5-2)"/>
+<polygon points="1371.50,616.28 1373.27,620.56 1377.89,620.92 1374.36,623.93 1375.45,628.44 1371.50,626.01 1367.55,628.44 1368.64,623.93 1365.11,620.92 1369.73,620.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-5-3"><rect x="1364.5" y="615" width="14" height="16"/></clipPath></defs>
+<polygon points="1371.50,616.28 1373.27,620.56 1377.89,620.92 1374.36,623.93 1375.45,628.44 1371.50,626.01 1367.55,628.44 1368.64,623.93 1365.11,620.92 1369.73,620.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-5-3)"/>
+<polygon points="1389.00,616.28 1390.77,620.56 1395.39,620.92 1391.86,623.93 1392.95,628.44 1389.00,626.01 1385.05,628.44 1386.14,623.93 1382.61,620.92 1387.23,620.56" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-5-4"><rect x="1382.0" y="615" width="14" height="16"/></clipPath></defs>
+<polygon points="1389.00,616.28 1390.77,620.56 1395.39,620.92 1391.86,623.93 1392.95,628.44 1389.00,626.01 1385.05,628.44 1386.14,623.93 1382.61,620.92 1387.23,620.56" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-5-4)"/>
+</g>
+<text x="1088" y="658" font-size="15" fill="#dbdee1" font-weight="400">One more run turned into</text>
+<text x="1088" y="680" font-size="15" fill="#dbdee1" font-weight="400">forty hours.</text>
+<text x="1240.5" y="773" text-anchor="middle" font-size="13" fill="#b5bac1" font-weight="400">Loading more reviews…</text>
+<text x="1072" y="816" font-size="12" fill="#b5bac1" font-weight="400">Your reviews are public by default.</text>
+<text x="1072" y="836" font-size="12" fill="#b5bac1" font-weight="400">Hide yours in Discord with</text>
+<text x="1072" y="856" font-size="12" fill="#dbdee1" font-weight="400">/reviews visibility hidden</text>
+<text x="1072" y="886" font-size="12" fill="#b5beff" font-weight="400">Visibility help</text>
+<text x="44" y="990" font-size="14" fill="#263b4b" font-weight="700">Design notes</text>
+<text x="155" y="990" font-size="14" fill="#536776" font-weight="400">Title groups → member reviews → global profile. 1–5 stars. No web editor or login.</text>
+<text x="44" y="1017" font-size="14" fill="#536776" font-weight="400">Edits keep their original position. Unknown edit history stays unmarked. Origin labels never reveal the source server.</text>
+<text class="review-metadata" x="1088" y="526" font-size="12" fill="#b5bac1" font-weight="400">Sep 8, 2026</text>
+<text class="review-metadata" x="1088" y="704" font-size="12" fill="#b5bac1" font-weight="400">Sep 6, 2026<tspan dx="10">·</tspan><tspan dx="10">42h played</tspan><tspan dx="10">·</tspan><tspan dx="10">Edited Sep 9, 2026</tspan></text>
+<g role="img" aria-label="Search titles input, empty">
+<rect x="76" y="202" width="896" height="44" rx="6" fill="#1e1f22"/>
+<text x="92" y="230" font-size="14" fill="#b5bac1">Search titles…</text>
+</g>
+<g role="img" aria-label="Search titles input, empty">
+<rect x="1072" y="253" width="340" height="44" rx="6" fill="#1e1f22"/>
+<text x="1088" y="281" font-size="14" fill="#b5bac1">Search titles…</text>
+</g>
+<g class="star-rating" role="img" aria-label="Average 3.5 out of 5 stars, 2 reviews" data-value="3.5" transform="translate(428 0)"><title>Average 3.5 out of 5 stars, 2 reviews</title>
+<polygon points="356.00,349.32 358.02,354.22 363.30,354.63 359.27,358.06 360.51,363.21 356.00,360.44 351.49,363.21 352.73,358.06 348.70,354.63 353.98,354.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-6-0"><rect x="348" y="348" width="16" height="18"/></clipPath></defs>
+<polygon points="356.00,349.32 358.02,354.22 363.30,354.63 359.27,358.06 360.51,363.21 356.00,360.44 351.49,363.21 352.73,358.06 348.70,354.63 353.98,354.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-6-0)"/>
+<polygon points="376.00,349.32 378.02,354.22 383.30,354.63 379.27,358.06 380.51,363.21 376.00,360.44 371.49,363.21 372.73,358.06 368.70,354.63 373.98,354.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-6-1"><rect x="368" y="348" width="16" height="18"/></clipPath></defs>
+<polygon points="376.00,349.32 378.02,354.22 383.30,354.63 379.27,358.06 380.51,363.21 376.00,360.44 371.49,363.21 372.73,358.06 368.70,354.63 373.98,354.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-6-1)"/>
+<polygon points="396.00,349.32 398.02,354.22 403.30,354.63 399.27,358.06 400.51,363.21 396.00,360.44 391.49,363.21 392.73,358.06 388.70,354.63 393.98,354.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-6-2"><rect x="388" y="348" width="16" height="18"/></clipPath></defs>
+<polygon points="396.00,349.32 398.02,354.22 403.30,354.63 399.27,358.06 400.51,363.21 396.00,360.44 391.49,363.21 392.73,358.06 388.70,354.63 393.98,354.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-6-2)"/>
+<polygon points="416.00,349.32 418.02,354.22 423.30,354.63 419.27,358.06 420.51,363.21 416.00,360.44 411.49,363.21 412.73,358.06 408.70,354.63 413.98,354.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-6-3"><rect x="408" y="348" width="8" height="18"/></clipPath></defs>
+<polygon points="416.00,349.32 418.02,354.22 423.30,354.63 419.27,358.06 420.51,363.21 416.00,360.44 411.49,363.21 412.73,358.06 408.70,354.63 413.98,354.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-6-3)"/>
+<polygon points="436.00,349.32 438.02,354.22 443.30,354.63 439.27,358.06 440.51,363.21 436.00,360.44 431.49,363.21 432.73,358.06 428.70,354.63 433.98,354.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+</g>
+<text x="952" y="363" text-anchor="end" font-size="13" fill="#b5bac1">2 reviews</text>
+<g class="star-rating" role="img" aria-label="Average 5.0 out of 5 stars, 1 review" data-value="5" transform="translate(428 0)"><title>Average 5.0 out of 5 stars, 1 review</title>
+<polygon points="356.00,658.32 358.02,663.22 363.30,663.63 359.27,667.06 360.51,672.21 356.00,669.44 351.49,672.21 352.73,667.06 348.70,663.63 353.98,663.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-7-0"><rect x="348" y="657" width="16" height="18"/></clipPath></defs>
+<polygon points="356.00,658.32 358.02,663.22 363.30,663.63 359.27,667.06 360.51,672.21 356.00,669.44 351.49,672.21 352.73,667.06 348.70,663.63 353.98,663.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-7-0)"/>
+<polygon points="376.00,658.32 378.02,663.22 383.30,663.63 379.27,667.06 380.51,672.21 376.00,669.44 371.49,672.21 372.73,667.06 368.70,663.63 373.98,663.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-7-1"><rect x="368" y="657" width="16" height="18"/></clipPath></defs>
+<polygon points="376.00,658.32 378.02,663.22 383.30,663.63 379.27,667.06 380.51,672.21 376.00,669.44 371.49,672.21 372.73,667.06 368.70,663.63 373.98,663.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-7-1)"/>
+<polygon points="396.00,658.32 398.02,663.22 403.30,663.63 399.27,667.06 400.51,672.21 396.00,669.44 391.49,672.21 392.73,667.06 388.70,663.63 393.98,663.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-7-2"><rect x="388" y="657" width="16" height="18"/></clipPath></defs>
+<polygon points="396.00,658.32 398.02,663.22 403.30,663.63 399.27,667.06 400.51,672.21 396.00,669.44 391.49,672.21 392.73,667.06 388.70,663.63 393.98,663.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-7-2)"/>
+<polygon points="416.00,658.32 418.02,663.22 423.30,663.63 419.27,667.06 420.51,672.21 416.00,669.44 411.49,672.21 412.73,667.06 408.70,663.63 413.98,663.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-7-3"><rect x="408" y="657" width="16" height="18"/></clipPath></defs>
+<polygon points="416.00,658.32 418.02,663.22 423.30,663.63 419.27,667.06 420.51,672.21 416.00,669.44 411.49,672.21 412.73,667.06 408.70,663.63 413.98,663.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-7-3)"/>
+<polygon points="436.00,658.32 438.02,663.22 443.30,663.63 439.27,667.06 440.51,672.21 436.00,669.44 431.49,672.21 432.73,667.06 428.70,663.63 433.98,663.22" fill="none" stroke="#8f96a3" stroke-width="1"/>
+<defs><clipPath id="star-7-4"><rect x="428" y="657" width="16" height="18"/></clipPath></defs>
+<polygon points="436.00,658.32 438.02,663.22 443.30,663.63 439.27,667.06 440.51,672.21 436.00,669.44 431.49,672.21 432.73,667.06 428.70,663.63 433.98,663.22" fill="#f0b232" stroke="#f0b232" stroke-width="1" clip-path="url(#star-7-4)"/>
+</g>
+<text x="952" y="672" text-anchor="end" font-size="13" fill="#b5bac1">1 review</text>
+</svg>

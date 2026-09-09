@@ -1,3 +1,4 @@
+import { canDisplayReview, redactDiscordSource } from '../../../reviews/writeStore'
 import {
   ChannelType,
   EmbedBuilder,
@@ -28,27 +29,25 @@ export async function getReviewForUser(
   let review
   if (type === 'movie')
     review = await bot.db.movieReview.findFirst({
-      where: { guildId, movieId: targetId, userId },
+      where: { movieId: targetId, userId },
     })
   else if (type === 'game')
     review = await bot.db.gameReview.findFirst({
-      where: { guildId, gameId: targetId, userId },
+      where: { gameId: targetId, userId },
     })
   else if (type === 'music')
     review = await bot.db.musicReview.findFirst({
-      where: { guildId, musicId: targetId, userId },
+      where: { musicId: targetId, userId },
     })
   else
     review = await bot.db.seriesReview.findFirst({
-      where: { guildId, seriesId: targetId, userId },
+      where: { seriesId: targetId, userId },
     })
 
-  if (review) {
+  if (canDisplayReview(review, guildId)) {
+    review = await redactDiscordSource(review, bot.getCollection(type as ReviewType), type as ReviewType, guildId)
     const targetInfo = await getByIdForType(type as ReviewType, targetId, bot)
-    const userAvatar = bot.guilds
-      .resolve(guildId)
-      .members.resolve(userId)
-      .user.avatarURL()
+    const userAvatar = await bot.users.fetch(userId).then((user) => user.avatarURL()).catch(() => '')
     const reviewEmbed = createReviewEmbed(review, targetInfo, userAvatar, type)
     interaction.channel.send({
       content: `Review requested by <@${interaction.user.id}>`,

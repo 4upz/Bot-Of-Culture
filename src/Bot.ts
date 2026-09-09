@@ -4,6 +4,7 @@ import MovieService from './services/MovieService'
 import { ReviewType, SlashCommand } from './utils/types'
 import GameService from './services/GameService'
 import MusicService from './services/MusicService'
+import { MembershipService, WebRevision } from './web/membership'
 import { getSecret } from './utils/helpers'
 
 export class BotClient extends Client {
@@ -12,6 +13,8 @@ export class BotClient extends Client {
   public movies: MovieService
   public games: GameService
   public music: MusicService
+  public webRevision = new WebRevision()
+  public reviewMembership: MembershipService
 
   constructor(options: ClientOptions) {
     super(options)

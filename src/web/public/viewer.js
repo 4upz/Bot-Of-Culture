@@ -1,0 +1,351 @@
+/* Same-origin read-only viewer. No review bodies are persisted in browser storage. */
+'use strict'
+;(() => {
+  const { escape: e, markdown, stars, createPager } = window.ReviewViewer
+  const $ = (id) => document.getElementById(id)
+  const route = location.pathname.match(/^\/(u|g)\/(\d+)\/?$/)
+  if (!route) {
+    $('results').innerHTML =
+      '<p class="empty">Open a review profile or server library link from Discord using <code>/reviews profile</code> or <code>/reviews server</code>.</p>'
+    $('search').disabled = true
+    return
+  }
+  const server = route[1] === 'g'
+  const base =
+    '/api/v1/' +
+    (server ? 'guilds' : 'users') +
+    '/' +
+    route[2] +
+    (server ? '/titles' : '/reviews')
+  const pager = createPager(
+    window.fetch.bind(window),
+    (item) => item.type + ':' + (server ? item.mediaId : item.id),
+  )
+  let consecutiveConflicts = 0
+  const expanded = new Map()
+  let observer,
+    debounce,
+    generation = 0,
+    paused = false
+  let q = '',
+    type = 'all'
+  const labels = {
+    movie: 'Movie',
+    series: 'TV series',
+    game: 'Game',
+    music: 'Music',
+  }
+  $('context').textContent = server ? '' : 'Review profile'
+  $('context').hidden = server
+  function date(value) {
+    if (!value) return ''
+    const d = new Date(value)
+    return Number.isNaN(d.valueOf())
+      ? ''
+      : new Intl.DateTimeFormat(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(d)
+  }
+  function review(item, personal = false) {
+    const metadata = [
+      date(item.createdAt),
+      item.hoursPlayed != null ? e(item.hoursPlayed) + 'h played' : '',
+      item.replayability != null
+        ? 'Replayability: ' + e(item.replayability)
+        : '',
+      item.updatedAt ? 'Edited ' + date(item.updatedAt) : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+    return (
+      '<article class="review">' +
+      (!personal
+        ? '<div class="review-line"><div class="author-identity"><a class="author" href="/u/' +
+          encodeURIComponent(item.userId) +
+          '"><span class="avatar" aria-hidden="true">' +
+          e((item.username || '?').slice(0, 2).toUpperCase()) +
+          '</span>' +
+          e(item.username || 'Reviewer') +
+          '</a>' +
+          (server && item.reviewedInAnotherServer
+            ? '<span class="origin">Reviewed in another server</span>'
+            : '') +
+          '</div>' +
+          stars(item.score) +
+          '</div>'
+        : '') +
+      (item.comment
+        ? '<div class="comment">' + markdown(item.comment) + '</div>'
+        : '') +
+      (item.sharedFromUsername
+        ? '<blockquote class="source"><span>' +
+          e(item.sharedFromUsername) +
+          '</span><div class="comment">' +
+          markdown(item.sharedFromComment || '') +
+          '</div></blockquote>'
+        : item.sourceUnavailable
+        ? '<p class="metadata">Source review unavailable</p>'
+        : '') +
+      '<p class="metadata review-metadata">' +
+      metadata +
+      '</p>' +
+      '</article>'
+    )
+  }
+  function card(item) {
+    const key = item.type + ':' + item.mediaId
+    const extra = expanded.get(key)
+    return (
+      '<section class="card"><header class="title-header"><div class="title-copy"><p class="type">' +
+      e(labels[item.type] || item.type) +
+      '</p><h2>' +
+      e(item.media?.title || 'Title unavailable') +
+      '</h2></div>' +
+      (server
+        ? '<div class="summary">' +
+          stars(item.averageScore, item.visibleReviewCount) +
+          '<button class="review-count" data-expand="' +
+          e(key) +
+          '" aria-expanded="' +
+          !!extra +
+          '">' +
+          e(item.visibleReviewCount) +
+          ' review' +
+          (item.visibleReviewCount === 1 ? '' : 's') +
+          '</button></div>'
+        : stars(item.score)) +
+      '</header>' +
+      (server
+        ? (extra ? extra.pager.items : item.reviews || [])
+            .map((r) => review(r))
+            .join('') +
+          (extra
+            ? '<div class="load-status" data-title-sentinel="' +
+              e(key) +
+              '" role="status" aria-live="polite"></div>'
+            : '')
+        : review(item, true)) +
+      '</section>'
+    )
+  }
+  function status(node, state, load, initial = false) {
+    node.replaceChildren()
+    if (state.busy) {
+      node.textContent =
+        'Loading ' +
+        (initial ? '' : 'more ') +
+        (server ? 'titles' : 'reviews') +
+        '…'
+      return
+    }
+    if (state.error) {
+      node.append(
+        document.createTextNode(
+          initial ? 'Could not load reviews.' : 'Could not load more.',
+        ),
+      )
+      const b = document.createElement('button')
+      b.className = 'retry'
+      b.textContent = 'Retry'
+      node.append(b)
+      const wait = state.error.retryAfter || 0
+      if (wait) {
+        b.disabled = true
+        b.textContent = 'Retry shortly'
+        setTimeout(() => {
+          b.disabled = false
+          b.textContent = 'Retry'
+        }, wait)
+      }
+      b.onclick = load
+      return
+    }
+    if (state.cursor === null)
+      node.textContent = q ? 'End of matching reviews' : 'You’re all caught up'
+  }
+  function render() {
+    const activeExpand = document.activeElement?.dataset?.expand
+    $('results').innerHTML = pager.items.map(card).join('')
+    if (!pager.items.length && !pager.busy && !pager.error)
+      $('results').innerHTML =
+        '<p class="empty">' +
+        (q
+          ? pager.data?.searchCoverage === 'partial'
+            ? 'No matches among available titles'
+            : 'No matching titles'
+          : 'No public reviews to show yet.') +
+        '</p>'
+    $('coverage').hidden = pager.data?.searchCoverage !== 'partial'
+    status($('sentinel'), pager, () => load(), !pager.items.length)
+    document.querySelectorAll('[data-expand]').forEach((b) => {
+      b.onclick = () => toggle(b.dataset.expand)
+      if (b.dataset.expand === activeExpand) b.focus({ preventScroll: true })
+    })
+    observer?.disconnect()
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          const key = entry.target.dataset.titleSentinel
+          if (key) {
+            const ex = expanded.get(key)
+            if (ex && !ex.pager.busy && !ex.pager.error && ex.pager.cursor)
+              loadTitle(key)
+          } else if (!pager.busy && !pager.error && pager.cursor) load()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+    if (pager.cursor && !pager.error) observer.observe($('sentinel'))
+    document.querySelectorAll('[data-title-sentinel]').forEach((node) => {
+      const ex = expanded.get(node.dataset.titleSentinel)
+      status(node, ex.pager, () => loadTitle(node.dataset.titleSentinel))
+      if (ex.pager.cursor && !ex.pager.error) observer.observe(node)
+    })
+  }
+  function url(path, cursor) {
+    const params = new URLSearchParams({ limit: '10' })
+    if (q) params.set('q', q)
+    if (type !== 'all') params.set('type', type)
+    if (cursor) params.set('cursor', cursor)
+    return path + '?' + params
+  }
+  async function load() {
+    if (paused || pager.busy) return
+    const g = generation
+    const promise = pager.load(url(base, pager.cursor))
+    status($('sentinel'), pager, load, !pager.items.length)
+    await promise
+    if (g !== generation) return
+    if (pager.error?.status === 409 && consecutiveConflicts++ === 0) {
+      $('notice').textContent = 'Reviews changed; refreshed'
+      reset()
+      return
+    }
+    if (pager.error && [403, 404, 503].includes(pager.error.status)) {
+      clearPrivate()
+      $('name').textContent = server ? 'Server library' : 'Review profile'
+      $('results').innerHTML =
+        '<p class="empty">' +
+        (server
+          ? 'Server library temporarily unavailable. Try again shortly.'
+          : 'This profile is not available.') +
+        '</p>'
+      status($('sentinel'), pager, reset, true)
+      return
+    }
+    if (!pager.error) consecutiveConflicts = 0
+    if (pager.data)
+      $('name').textContent = server
+        ? pager.data.guild?.name || 'Server library'
+        : pager.data.profile?.username || 'Review profile'
+    render()
+  }
+  function clearPrivate() {
+    for (const ex of expanded.values()) ex.pager.reset()
+    expanded.clear()
+    pager.items = []
+    observer?.disconnect()
+    $('results').replaceChildren()
+  }
+  function reset() {
+    generation++
+    pager.reset()
+    clearPrivate()
+    $('name').textContent = server ? 'Server library' : 'Review profile'
+    $('coverage').hidden = true
+    load()
+  }
+  function toggle(key) {
+    if (expanded.has(key)) {
+      expanded.get(key).pager.reset()
+      expanded.delete(key)
+      render()
+      return
+    }
+    const item = pager.items.find((x) => x.type + ':' + x.mediaId === key)
+    const p = createPager(window.fetch.bind(window), (r) => r.type + ':' + r.id)
+    p.items = [...(item.reviews || [])]
+    p.cursor = item.nextReviewCursor
+    expanded.set(key, { pager: p, item })
+    render()
+  }
+  async function loadTitle(key) {
+    const ex = expanded.get(key)
+    if (!ex || ex.pager.busy) return
+    const g = generation
+    const promise = ex.pager.load(
+      url(
+        base +
+          '/' +
+          encodeURIComponent(ex.item.type) +
+          '/' +
+          encodeURIComponent(ex.item.mediaId) +
+          '/reviews',
+        ex.pager.cursor,
+      ),
+    )
+    render()
+    await promise
+    if (g !== generation || expanded.get(key) !== ex) return
+    if (
+      ex.pager.error &&
+      [403, 404, 409, 503].includes(ex.pager.error.status)
+    ) {
+      reset()
+      return
+    }
+    render()
+  }
+  function filters(fromHistory = false) {
+    clearTimeout(debounce)
+    if (fromHistory) {
+      const p = new URLSearchParams(location.search)
+      q = p.get('q') || ''
+      type = labels[p.get('type')] ? p.get('type') : 'all'
+      $('search').value = q
+    } else {
+      q = $('search').value
+      const p = new URLSearchParams()
+      if (q) p.set('q', q)
+      if (type !== 'all') p.set('type', type)
+      history.pushState(null, '', location.pathname + (p.size ? '?' + p : ''))
+    }
+    document
+      .querySelectorAll('[data-type]')
+      .forEach((b) =>
+        b.setAttribute('aria-pressed', String(b.dataset.type === type)),
+      )
+    reset()
+  }
+  $('search').oninput = () => {
+    clearTimeout(debounce)
+    q = $('search').value
+    generation++
+    pager.reset()
+    clearPrivate()
+    $('sentinel').textContent = 'Searching titles…'
+    debounce = setTimeout(() => filters(), 300)
+  }
+  document.querySelectorAll('[data-type]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        type = b.dataset.type
+        filters()
+      }),
+  )
+  window.addEventListener('popstate', () => filters(true))
+  document.addEventListener('visibilitychange', () => {
+    paused = document.hidden
+    if (!paused) reset()
+  })
+  window.addEventListener('focus', () => {
+    if (!document.hidden) reset()
+  })
+  setInterval(() => {
+    if (!document.hidden) reset()
+  }, 30000)
+  filters(true)
+})()

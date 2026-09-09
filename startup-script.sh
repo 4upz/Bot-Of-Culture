@@ -45,6 +45,8 @@ docker run -d \
   --name bot-of-culture \
   --restart unless-stopped \
   -e ENV=PROD \
+  --env-file /etc/bot-of-culture/runtime.env \
+  -p 127.0.0.1:8080:8080 \
   "${IMAGE}"
 
 echo "✅ Bot-Of-Culture deployment complete!"

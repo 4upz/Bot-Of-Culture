@@ -21,7 +21,11 @@ model RPSGame {
 model MovieReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   movieId String
-  guildId String
+  guildId String?
+  originGuildId String?
+  originSource String?
+  isPrivate Boolean @default(false)
+  updatedAt DateTime?
   score Int
   comment String?
   userId String
@@ -32,13 +36,19 @@ model MovieReview {
   sharedFromComment String?
   isQuote Boolean @default(false)
 
-  @@index([movieId, guildId, userId])
+  @@unique([userId, movieId])
+  @@index([userId, createdAt])
+  @@index([movieId, createdAt])
 }
 
 model SeriesReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   seriesId String
-  guildId String
+  guildId String?
+  originGuildId String?
+  originSource String?
+  isPrivate Boolean @default(false)
+  updatedAt DateTime?
   score Int
   comment String?
   userId String
@@ -49,13 +59,19 @@ model SeriesReview {
   sharedFromComment String?
   isQuote Boolean @default(false)
 
-  @@index([seriesId, guildId, userId])
+  @@unique([userId, seriesId])
+  @@index([userId, createdAt])
+  @@index([seriesId, createdAt])
 }
 
 model GameReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   gameId String
-  guildId String
+  guildId String?
+  originGuildId String?
+  originSource String?
+  isPrivate Boolean @default(false)
+  updatedAt DateTime?
   score Int
   hoursPlayed Int?
   comment String?
@@ -67,7 +83,9 @@ model GameReview {
   sharedFromComment String?
   isQuote Boolean @default(false)
 
-  @@index([gameId, guildId, userId])
+  @@unique([userId, gameId])
+  @@index([userId, createdAt])
+  @@index([gameId, createdAt])
 }
 
 enum Replayability {
@@ -79,9 +97,13 @@ enum Replayability {
 model MusicReview {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   musicId String
-  guildId String
+  guildId String?
+  originGuildId String?
+  originSource String?
+  isPrivate Boolean @default(false)
+  updatedAt DateTime?
   score Int
-  replayability Replayability
+  replayability Replayability?
   comment String?
   userId String
   username String
@@ -91,5 +113,24 @@ model MusicReview {
   sharedFromComment String?
   isQuote Boolean @default(false)
 
-  @@index([musicId, guildId, userId])
+  @@unique([userId, musicId])
+  @@index([userId, createdAt])
+  @@index([musicId, createdAt])
+}
+
+model ReviewPreference {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @unique
+  isPublic Boolean @default(true)
+  updatedAt DateTime @default(now())
+}
+
+model MediaTitle {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  type String
+  mediaId String
+  title String
+  normalizedTitle String
+  fetchedAt DateTime
+  @@unique([type, mediaId])
 }

@@ -1,3 +1,4 @@
+import { canDisplayReview } from '../../../reviews/writeStore'
 import { ModalSubmitInteraction } from 'discord.js'
 import { BotClient } from '../../../Bot'
 import { ReviewType } from '../../../utils/types'
@@ -36,11 +37,10 @@ async function handleQuoteReview(interaction: ModalSubmitInteraction) {
       where: {
         userId: originalUserId,
         [`${type}Id`]: mediaId,
-        guildId: interaction.guildId,
       },
     })
 
-    if (!originalReview) {
+    if (!canDisplayReview(originalReview, interaction.guildId)) {
       await interaction.reply({
         content: 'Sorry, the original review could not be found.',
         ephemeral: true,

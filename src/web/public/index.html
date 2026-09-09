@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Reviews</title>
+    <link rel="stylesheet" href="/assets/viewer.css" />
+    <script defer src="/assets/viewer-core.js"></script>
+    <script defer src="/assets/viewer.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="intro">
+        <p id="context" class="eyebrow" hidden></p>
+        <h1 id="name">Reviews</h1>
+      </header>
+      <section aria-label="Find reviews">
+        <label for="search" class="sr-only">Search titles</label
+        ><input
+          id="search"
+          type="search"
+          placeholder="Search titles…"
+          maxlength="100"
+          autocomplete="off"
+        />
+        <nav id="filters" aria-label="Media type">
+          <button data-type="all" aria-pressed="true">All</button
+          ><button data-type="movie" aria-pressed="false">Movies</button
+          ><button data-type="series" aria-pressed="false">TV series</button
+          ><button data-type="game" aria-pressed="false">Games</button
+          ><button data-type="music" aria-pressed="false">Music</button>
+        </nav>
+      </section>
+      <p class="sort">Newest reviews first</p>
+      <p id="coverage" class="metadata" hidden>
+        Some titles are still being indexed.
+      </p>
+      <div id="notice" role="status" aria-live="polite"></div>
+      <section id="results" aria-label="Reviews"></section>
+      <div
+        id="sentinel"
+        class="load-status"
+        role="status"
+        aria-live="polite"
+      ></div>
+      <footer>
+        <p>
+          Your reviews are public by default. Hide yours everywhere on this site
+          with <code>/reviews visibility hidden</code> in Discord.
+        </p>
+        <details>
+          <summary>Visibility help</summary>
+          <p>
+            Run <code>/reviews visibility</code> in Discord to see your setting.
+            Use <code>/reviews visibility public</code> to show your reviews
+            again. This setting includes old reviews and does not change
+            existing Discord messages.
+          </p>
+        </details>
+      </footer>
+    </main>
+  </body>
+</html>
