@@ -27,8 +27,9 @@ async function run() {
       try { await fs.access(path); throw new Error('Manifest already exists; choose a new file') } catch (e) { if (e.code !== 'ENOENT') throw e }
       const plan = { version: 1, migrationBatchId: new ObjectId().toHexString(), databaseName, options, baselineCounts: {}, groups: [], auditErrors: [] }
       for (const collection of Object.keys(COLLECTIONS)) {
+        // Preserve numeric BSON tags (including safe Long and integral Double) in archives.
         const docs = []
-        for await (const doc of db.collection(collection).find({}).batchSize(100)) docs.push(doc)
+        for await (const doc of db.collection(collection).find({}, { promoteValues: false }).batchSize(100)) docs.push(doc)
         plan.baselineCounts[collection] = docs.length
         try {
           plan.groups.push(...planCollection(collection, docs, options))
@@ -64,7 +65,7 @@ async function run() {
       }
       if (mode === 'verify') {
         for (const entry of group.entries) {
-          const current = await collection.findOne({ _id: new ObjectId(entry.originalReviewId) })
+          const current = await collection.findOne({ _id: new ObjectId(entry.originalReviewId) }, { promoteValues: false })
           if (entry.recordKind === 'DUPLICATE' ? current !== null : !current || checksum(current) !== group.expectedPostChecksum) throw new Error(`Verification mismatch ${entry.originalReviewId}`)
         }
         continue
@@ -74,7 +75,7 @@ async function run() {
         await session.withTransaction(async () => {
           for (const entry of group.entries) {
             const filter = { _id: new ObjectId(entry.originalReviewId) }
-            const current = await collection.findOne(filter, { session })
+            const current = await collection.findOne(filter, { session, promoteValues: false })
             const action = transition(current, entry, group, mode === 'rollback')
             if (action === 'delete') await collection.deleteOne(filter, { session })
             if (action === 'replace') await collection.replaceOne(filter, decode(group.postDocumentEjson), { session })

@@ -54,3 +54,16 @@ test('provider retries are bounded and unsafe provider IDs rejected before fetch
   await assert.rejects(fetchTitle('game', '1; delete all', () => { throw new Error('must not fetch') }))
   delete process.env.TMDB_TOKEN
 })
+
+test('BSON numeric scores validate without changing archived tags or leaking wrappers into report scores', () => {
+  for (const score of [new BSON.Int32(4), new BSON.Double(4), BSON.Long.fromNumber(4), BSON.Decimal128.fromString('4.0')]) {
+    const original = review('1', '2020-01-01', { score, unknown: { safeLong: BSON.Long.fromNumber(42), double: new BSON.Double(4), decimal: BSON.Decimal128.fromString('123.4500') } })
+    const [group] = planCollection('MovieReview', [original], options)
+    assert.equal(group.entries[0].score, 4)
+    assert.equal(decode(group.entries[0].originalDocumentEjson).score._bsontype, score._bsontype)
+    assert.equal(checksum(decode(group.entries[0].originalDocumentEjson)), checksum(original))
+  }
+  for (const score of ['4', { valueOf: () => 4 }, true, null, new BSON.Double(4.5)]) {
+    assert.throws(() => planCollection('MovieReview', [review('1', '2020-01-01', { score })], options), /Invalid score/)
+  }
+})
