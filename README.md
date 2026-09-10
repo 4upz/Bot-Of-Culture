@@ -156,8 +156,10 @@ Public routes are `/u/:discordUserId` and `/g/:guildId`. Discord `/reviews profi
 Reviews remain authored in Discord. Anonymous responses are never cached and
 search engines are instructed not to index them. Guild pages fail closed during
 incomplete, disconnected, or stale membership synchronization. A single bot/web
-process is required for immediate write invalidation. Open pages revalidate on
-focus and every 30 seconds; already received content cannot be retracted.
+process is required for immediate write invalidation. Pages keep the reviews
+already loaded until the reader reloads or changes filters. There is no automatic refresh on a timer, focus, or tab visibility.
+Each pagination request still checks current privacy and membership; stale
+cursors require a manual reload. Already received content cannot be retracted.
 
 For GCE, follow [the controlled deployment procedure](docs/deployment-durability.md).
 Persist configuration in `/var/lib/bot-of-culture/runtime.env`; COS boot restores

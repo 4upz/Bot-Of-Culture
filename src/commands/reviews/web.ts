@@ -28,7 +28,7 @@ export default {
         } else {
           isPublic = await getWebVisibility(bot.db, interaction.user.id)
         }
-        await interaction.editReply(`Your reviews are ${isPublic ? 'public' : 'hidden'} on all web review pages. Private reviews stay off the web. Existing Discord posts are unchanged.${state === 'hidden' ? ' Open web pages clear on their next refresh (up to 30 seconds).' : ''}`)
+        await interaction.editReply(`Your reviews are ${isPublic ? 'public' : 'hidden'} on all web review pages. Private reviews stay off the web. Existing Discord posts are unchanged.${state === 'hidden' ? ' Already loaded reviews remain visible until the page is reloaded.' : ''}`)
         return
       }
       if (command === 'server' && !interaction.guildId) {
