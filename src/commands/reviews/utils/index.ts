@@ -212,12 +212,18 @@ export async function saveReview(
   if (interaction.isModalSubmit())
     comment = interaction.fields.getTextInputValue('reviewCommentInput')
 
-  const data: { [key: string]: string | number } = {
+  const data: { [key: string]: string | number | boolean | null } = {
     userId: interaction.user.id,
     username: interaction.user.username,
     guildId: interaction.guildId,
     score: parseInt(params[4]),
     comment,
+    // An original review replaces any earlier co-sign/quote of the same title,
+    // so its copied attribution must not survive the update.
+    sharedFromUserId: null,
+    sharedFromUsername: null,
+    sharedFromComment: null,
+    isQuote: false,
   }
 
   // Assign ID key by asserting from type

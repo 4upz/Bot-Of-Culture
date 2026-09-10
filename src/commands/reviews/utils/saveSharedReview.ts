@@ -67,7 +67,7 @@ export async function saveSharedReview(
     let review = result.review
     const profileUrl = publicReviewUrl('user', interaction.user.id)
     const statusReply = result.message + (profileUrl ? ` [View your review profile](${profileUrl})` : '')
-    if (originalReview.isPrivate === true) (bot as any).webRevision?.bump()
+    if (originalReview.isPrivate === true) bot.webRevision.bump()
     if (!canDisplayReview(review, interaction.guildId)) {
       await interaction.editReply(`${statusReply} Your private review was not posted outside its original server.`)
       return

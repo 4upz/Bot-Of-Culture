@@ -25,7 +25,7 @@ case "$*" in
   *'image inspect '*) echo sha256:existing;;
   *'inspect --format {{.State.Running}}'*) echo true;;
   *'inspect --format {{.RestartCount}}'*) echo 0;;
-  *'inspect --format {{.Id}}'*) echo old-container;;
+  *'inspect --format {{.Id}}'*) if test "$FAILURE" = no_old; then exit 1; else echo old-container; fi;;
   *'logs '*) if test "$FAILURE" != readiness; then echo 'Review web listening on 8080'; if test "$FAILURE" = large_logs; then for ((n=0; n<10000; n++)); do echo 'additional startup output after readiness marker'; done; fi; fi;;
   *) true;;
 esac
@@ -97,6 +97,13 @@ esac
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('rename bot-of-culture bot-of-culture-retained-', calls)
         self.assertNotIn('rm bot-of-culture-retained', calls)
+
+    def test_first_rollout_without_existing_container_succeeds(self):
+        result, calls = self.run_case('no_old')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('rename bot-of-culture bot-of-culture-retained-', calls)
+        self.assertNotIn('stop bot-of-culture', calls)
+        self.assertIn('rename bot-of-culture-staged-', calls)
 
     def test_failed_readiness_uses_only_explicit_compatible_rollback(self):
         result, calls = self.run_case('readiness')

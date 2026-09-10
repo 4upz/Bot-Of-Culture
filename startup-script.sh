@@ -85,13 +85,15 @@ create_bot() {
 }
 STAGED="bot-of-culture-staged-$(date +%s)-$$"
 create_bot "$STAGED" "$IMAGE"
-OLD_ID=$(docker inspect --format '{{.Id}}' "$NAME")
-RETAINED="bot-of-culture-retained-${OLD_ID:0:12}"
-# Every stopped legacy writer has restart disabled BEFORE mutation/cutover.
 touch "$STATE/maintenance"
-docker update --restart=no "$NAME"
-docker stop "$NAME"
-docker rename "$NAME" "$RETAINED"
+# A first rollout, or one after a failed rollback removed the container, has no legacy writer to retire.
+if OLD_ID=$(docker inspect --format '{{.Id}}' "$NAME" 2>/dev/null); then
+  RETAINED="bot-of-culture-retained-${OLD_ID:0:12}"
+  # Every stopped legacy writer has restart disabled BEFORE mutation/cutover.
+  docker update --restart=no "$NAME"
+  docker stop "$NAME"
+  docker rename "$NAME" "$RETAINED"
+fi
 ready() {
   local stable=0
   for ((i=0; i<45; i++)); do

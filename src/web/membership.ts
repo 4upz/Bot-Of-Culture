@@ -2,6 +2,8 @@ import { BotClient } from '../Bot'
 import { HttpError } from './query'
 interface Snapshot {
   members: Set<string>
+  /** Roster array cached per generation so get() does not copy the Set on every request. */
+  list?: { generation: number; members: string[] }
   name: string
   syncedAt: number
   generation: number
@@ -27,8 +29,10 @@ export class MembershipService {
         503,
         'Server library temporarily unavailable. Try again shortly.',
       )
+    if (s.list?.generation !== s.generation)
+      s.list = { generation: s.generation, members: [...s.members] }
     return {
-      members: [...s.members],
+      members: s.list.members,
       name: s.name,
       syncedAt: s.syncedAt,
       generation: s.generation,

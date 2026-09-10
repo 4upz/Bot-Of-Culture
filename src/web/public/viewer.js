@@ -254,10 +254,14 @@
     observer?.disconnect()
     $('results').replaceChildren()
   }
-  function reset() {
+  // Invalidate in-flight pages and clear the list without loading anything.
+  function cancel() {
     generation++
     pager.reset()
     clearPrivate()
+  }
+  function reset() {
+    cancel()
     $('name').textContent = server ? 'Server library' : 'Review profile'
     $('coverage').hidden = true
     load()
@@ -327,9 +331,7 @@
   $('search').oninput = () => {
     clearTimeout(debounce)
     q = $('search').value
-    generation++
-    pager.reset()
-    clearPrivate()
+    cancel()
     $('sentinel').textContent = 'Searching titles…'
     debounce = setTimeout(() => filters(), 300)
   }
