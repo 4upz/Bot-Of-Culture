@@ -1,6 +1,6 @@
 # Review migration and title operations
 
-These tools have **not been run against any production database**. Unit tests use BSON fixtures; integration tests have passed against a disposable local MongoDB 7 replica set, exercising real transactions, durable archives, failed-transaction resume, exact BSON restoration, post-write conflict protection and title persistence with fixture providers. A rehearsal on a restored production backup, deployment-history audit, conflict approval and separate production execution authorization remain release gates. MongoDB transactions are required; there is deliberately no standalone-server fallback.
+Production cutover completed on September 10, 2026 after explicit approval, a restored-backup rehearsal, and a fresh paused-writer backup. The verified migration preserved all 597 originals and selected 587 canonical reviews, including the three approved production winners. See [the release record](validation/2026-09-10-cutover-readiness.md) for deployed artifacts, verification, protected backup locations, and recovery constraints. For future migrations, repeat the rehearsal, audit, conflict approval, backup and execution gates. MongoDB transactions are required; there is deliberately no standalone-server fallback.
 
 ## Private migration report
 
