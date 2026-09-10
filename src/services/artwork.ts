@@ -1,3 +1,4 @@
+import needle, { BodyData, NeedleHttpVerbs, NeedleOptions } from 'needle'
 import { ReviewType } from '../utils/types'
 import { publicImageUrl } from '../web/query'
 
@@ -10,25 +11,33 @@ export class ProviderError extends Error {
     super('Artwork provider unavailable')
   }
 }
-export async function providerJson(url: string, init: RequestInit) {
-  const response = await fetch(url, {
-    ...init,
+interface ProviderRequest {
+  method?: NeedleHttpVerbs
+  body?: BodyData
+  headers?: NeedleOptions['headers']
+  signal?: AbortSignal
+}
+export async function providerJson(url: string, init: ProviderRequest) {
+  const response = await needle(init.method || 'get', url, init.body ?? null, {
+    headers: init.headers,
     signal: init.signal || AbortSignal.timeout(5000),
+    // Keep JSON decoding strict; Needle's automatic parser retains invalid input.
+    parse_response: false,
+    decode_response: false,
   })
-  if (!response.ok) {
-    const value = response.headers.get('Retry-After')
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    const value = response.headers['retry-after']
     const retry =
       value &&
       (/^\d+$/.test(value)
         ? Number(value) * 1000
         : Date.parse(value) - Date.now())
-    await response.body?.cancel()
     throw new ProviderError(
-      response.status,
+      response.statusCode,
       Number.isFinite(retry) && retry > 0 ? Math.min(retry, 86400000) : 60000,
     )
   }
-  return response.json()
+  return JSON.parse(response.body.toString('utf8'))
 }
 export function parseArtwork(
   type: ReviewType,

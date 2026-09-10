@@ -31,8 +31,8 @@ export default class GameService extends Service {
       grant_type: 'client_credentials',
     }
     const response = await providerJson('https://id.twitch.tv/oauth2/token', {
-      method: 'POST',
-      body: new URLSearchParams(authData),
+      method: 'post',
+      body: authData,
       signal,
     }).catch((error) => {
       console.log('Cannot authorize via Twitch. Something went wrong.')

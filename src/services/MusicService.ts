@@ -37,8 +37,8 @@ export default class MusicService extends Service {
     const response = await providerJson(
       'https://accounts.spotify.com/api/token',
       {
-        method: 'POST',
-        body: new URLSearchParams(body),
+        method: 'post',
+        body,
         headers,
         signal,
       },

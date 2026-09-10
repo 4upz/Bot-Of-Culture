@@ -47,7 +47,7 @@ export default abstract class Service {
         },
         ...(type === 'game'
           ? {
-              method: 'POST',
+              method: 'post',
               body: `fields name, cover.url; where id = ${id}; limit 1;`,
             }
           : {}),
