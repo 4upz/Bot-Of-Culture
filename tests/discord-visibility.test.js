@@ -32,6 +32,8 @@ test('visibility writes caller only, succeeds after storage and bumps revision',
   assert.equal(stored, true)
   assert.match(i.replies[0], /hidden/)
   assert.equal(i.bumps(), 1)
+  assert.match(i.replies[0], /Already loaded reviews remain visible until the page is reloaded/)
+  assert.doesNotMatch(i.replies[0], /30 seconds|automatically/)
 })
 test('failed visibility write never acknowledges success or bumps revision', async () => {
   const i = interaction('visibility', 'hidden', { reviewPreference: { async upsert() { throw new Error('db') } } })

@@ -3,26 +3,16 @@ const assert = require('node:assert/strict')
 const vm = require('node:vm')
 const fs = require('node:fs')
 const core = require('../src/web/public/viewer-core')
-function fixture(pathname = '/u/123') {
+function fixture(pathname = '/u/123', hidden = false) {
   const nodes = new Map(),
     events = {},
     timers = new Map(),
     requests = [],
     observers = []
-  let nextTimer = 0,
-    now = Date.now()
-  const timerDelays = new Map()
+  let nextTimer = 0
   function node() {
-    let html = ''
     return {
-      htmlWrites: 0,
-      get innerHTML() {
-        return html
-      },
-      set innerHTML(value) {
-        html = value
-        this.htmlWrites++
-      },
+      innerHTML: '',
       textContent: '',
       value: '',
       dataset: {},
@@ -38,9 +28,6 @@ function fixture(pathname = '/u/123') {
       setAttribute(name, value) {
         this.attributes[name] = value
       },
-      focus() {
-        document.activeElement = this
-      },
     }
   }
   const filters = ['all', 'movie', 'series', 'game', 'music'].map((type) => ({
@@ -48,34 +35,27 @@ function fixture(pathname = '/u/123') {
     dataset: { type },
   }))
   const document = {
-    hidden: false,
+    hidden,
     getElementById(id) {
       if (!nodes.has(id)) nodes.set(id, node())
       return nodes.get(id)
     },
     querySelectorAll(selector) {
       if (selector === '[data-type]') return filters
-      const attr =
-        selector === '[data-expand]'
-          ? 'expand'
-          : selector === '[data-title-sentinel]'
-          ? 'title-sentinel'
-          : null
-      if (!attr) return []
+      if (selector !== '[data-expand]') return []
       return [
         ...(nodes.get('results')?.innerHTML || '').matchAll(
-          new RegExp('data-' + attr + '="([^"]+)"', 'g'),
+          /data-expand="([^"]+)"/g,
         ),
       ].map((match) => {
-        const id = attr + ':' + match[1]
-        if (!nodes.has(id))
-          nodes.set(id, {
+        const key = 'expand:' + match[1]
+        if (!nodes.has(key))
+          nodes.set(key, {
             ...node(),
-            dataset: {
-              [attr === 'expand' ? 'expand' : 'titleSentinel']: match[1],
-            },
+            dataset: { expand: match[1] },
+            focus() {},
           })
-        return nodes.get(id)
+        return nodes.get(key)
       })
     },
     createElement: node,
@@ -107,11 +87,7 @@ function fixture(pathname = '/u/123') {
       history,
       URLSearchParams,
       Intl,
-      Date: class extends Date {
-        static now() {
-          return now
-        }
-      },
+      Date,
       encodeURIComponent,
       IntersectionObserver: class {
         constructor(fn) {
@@ -121,15 +97,13 @@ function fixture(pathname = '/u/123') {
         observe() {}
         disconnect() {}
       },
-      setTimeout(fn, delay) {
+      setTimeout(fn) {
         const id = ++nextTimer
         timers.set(id, fn)
-        timerDelays.set(id, delay)
         return id
       },
       clearTimeout(id) {
         timers.delete(id)
-        timerDelays.delete(id)
       },
       setInterval(fn) {
         events.interval = fn
@@ -139,13 +113,7 @@ function fixture(pathname = '/u/123') {
   const flush = async () => {
     await new Promise((resolve) => setImmediate(resolve))
   }
-  const reply = async (
-    index,
-    items = [],
-    cursor = null,
-    status = 200,
-    metadata = {},
-  ) => {
+  const reply = async (index, items = [], cursor = null, status = 200) => {
     requests[index].resolve({
       ok: status === 200,
       status,
@@ -155,7 +123,6 @@ function fixture(pathname = '/u/123') {
         nextCursor: cursor,
         profile: { username: 'Maya' },
         searchCoverage: 'complete',
-        ...metadata,
       }),
     })
     await flush()
@@ -170,18 +137,6 @@ function fixture(pathname = '/u/123') {
     reply,
     flush,
     document,
-    advance(ms) {
-      now += ms
-    },
-    expire(delay) {
-      for (const [id, fn] of timers) {
-        if (timerDelays.get(id) === delay) {
-          timers.delete(id)
-          timerDelays.delete(id)
-          fn()
-        }
-      }
-    },
   }
 }
 const review = (id) => ({
@@ -225,165 +180,49 @@ test('overlapping infinite observations serialize and append deduplicates', asyn
   )
   assert.equal(f.nodes.get('sentinel').textContent, 'You’re all caught up')
 })
-test('focus revalidates quietly and unavailable response removes reviews and identity', async () => {
-  const f = fixture()
-  await f.reply(0, [review('private later')])
-  f.events.focus()
-  assert.match(f.nodes.get('results').innerHTML, /private later/)
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /skeleton/)
-  assert.equal(f.nodes.get('name').textContent, 'Maya')
-  await f.reply(1, [], null, 404)
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /private later/)
-  assert.match(f.nodes.get('results').innerHTML, /not available/)
+function returnToPage(f) {
   f.document.hidden = true
-  f.events.interval()
-  assert.equal(f.requests.length, 2)
+  f.events.visibilitychange?.()
+  f.events.interval?.()
   f.document.hidden = false
-  f.advance(30000)
-  f.events.interval()
-  assert.equal(f.requests.length, 3)
-})
+  f.events.visibilitychange?.()
+  f.events.focus?.()
+  f.events.interval?.()
+}
 
-test('unchanged automatic refresh keeps the existing DOM and all loaded pages', async () => {
-  const f = fixture()
-  await f.reply(0, [review('first')], 'old-next')
-  f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
-  await f.reply(1, [review('second')], 'old-third')
-  const results = f.nodes.get('results')
-  const writes = results.htmlWrites
-  f.events.interval()
-  assert.equal(results.htmlWrites, writes)
-  await f.reply(2, [review('first')], 'fresh-next')
-  assert.match(f.requests[3].url, /cursor=fresh-next/)
-  assert.equal(results.htmlWrites, writes)
-  await f.reply(3, [review('second')], 'fresh-third')
-  assert.equal(results.htmlWrites, writes)
-  f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
-  assert.match(f.requests[4].url, /cursor=fresh-third/)
-})
-
-test('visibility, focus and timer share one refresh, including a fast response', async () => {
-  const f = fixture()
-  await f.reply(0, [review('first')])
-  f.document.hidden = true
-  f.events.visibilitychange()
-  f.document.hidden = false
-  f.events.visibilitychange()
-  f.events.focus()
-  f.events.interval()
-  assert.equal(f.requests.length, 2)
-  assert.equal(f.requests[1].options.signal.aborted, false)
-  await f.reply(1, [review('first')])
-  f.events.focus()
-  assert.equal(f.requests.length, 2)
-  f.advance(30000)
-  f.events.interval()
-  assert.equal(f.requests.length, 3)
-})
-
-test('automatic refresh waits for append work and then revalidates it', async () => {
+test('loaded profile pages stay unchanged on focus, visibility and timer events', async () => {
   const f = fixture()
   await f.reply(0, [review('first')], 'next')
   f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
-  f.events.focus()
-  assert.equal(f.requests.length, 2)
-  assert.equal(f.requests[1].options.signal.aborted, false)
   await f.reply(1, [review('second')])
-  assert.equal(f.requests.length, 3)
-  assert.doesNotMatch(f.requests[2].url, /cursor=/)
+  const html = f.nodes.get('results').innerHTML
+  for (let i = 0; i < 10; i++) returnToPage(f)
+  assert.equal(f.requests.length, 2)
+  assert.equal(f.nodes.get('results').innerHTML, html)
+  assert.equal(f.nodes.get('name').textContent, 'Maya')
+  assert.equal(f.events.interval, undefined)
 })
 
-test('refresh removes newly hidden reviews on later pages', async () => {
-  const f = fixture()
-  await f.reply(0, [review('first')], 'next')
-  f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
-  await f.reply(1, [review('hidden later')])
-  f.events.interval()
-  await f.reply(2, [review('first')], 'fresh-next')
-  await f.reply(3, [])
+test('opening a background tab still loads its initial reviews without a focus handler', async () => {
+  const f = fixture('/u/123', true)
+  assert.equal(f.requests.length, 1)
+  await f.reply(0, [review('first')])
+  returnToPage(f)
+  assert.equal(f.requests.length, 1)
   assert.match(f.nodes.get('results').innerHTML, /<h2>first/)
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /hidden later/)
 })
 
-test('filters cancel background refresh and ignore its late response', async () => {
-  const f = fixture()
-  await f.reply(0, [review('old')])
-  f.events.interval()
-  f.filters[3].onclick()
-  assert.equal(f.requests[1].options.signal.aborted, true)
-  await f.reply(2, [review('new')])
-  await f.reply(1, [review('old')])
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /<h2>old/)
-  assert.match(f.nodes.get('results').innerHTML, /<h2>new/)
-})
-
-test('failed or timed-out revalidation cannot retain unverified reviews indefinitely', async () => {
-  for (const failure of [429, 500, 503, 'timeout']) {
-    const f = fixture()
-    await f.reply(0, [review('unverified')])
-    f.events.interval()
-    if (failure === 'timeout') {
-      f.expire(10000)
-      await f.flush()
-    } else await f.reply(1, [], null, failure)
-    assert.doesNotMatch(
-      f.nodes.get('results').innerHTML,
-      /unverified/,
-      String(failure),
-    )
-    assert.equal(f.nodes.get('sentinel').children.at(-1).textContent, 'Retry')
-    if (failure === 'timeout') {
-      assert.equal(f.requests[1].options.signal.aborted, true)
-      await f.reply(1, [review('unverified')])
-      assert.doesNotMatch(f.nodes.get('results').innerHTML, /unverified/)
-    }
-  }
-})
-
-test('expanded reviews stay open and are revalidated with fresh title cursors', async () => {
-  const f = fixture('/g/123')
-  const group = (next) => ({
-    type: 'movie',
-    mediaId: 'film',
-    media: { title: 'Film' },
-    averageScore: 4,
-    visibleReviewCount: 2,
-    reviews: [review('first')],
-    nextReviewCursor: next,
-  })
-  await f.reply(0, [group('old-title')])
-  f.document.querySelectorAll('[data-expand]')[0].onclick()
-  f.observers.at(-1).fn([
-    {
-      isIntersecting: true,
-      target: { dataset: { titleSentinel: 'movie:film' } },
-    },
-  ])
-  await f.reply(1, [review('hidden later')])
-  f.events.interval()
-  assert.match(f.nodes.get('results').innerHTML, /aria-expanded="true"/)
-  await f.reply(2, [group('fresh-title')])
-  assert.match(
-    f.requests[3].url,
-    /\/movie\/film\/reviews\?.*cursor=fresh-title/,
-  )
-  await f.reply(3, [review('replacement')])
-  assert.match(f.nodes.get('results').innerHTML, /aria-expanded="true"/)
-  assert.match(f.nodes.get('results').innerHTML, /replacement/)
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /hidden later/)
-})
-
-test('refresh queued during title pagination runs when that request finishes', async () => {
+test('expanded server reviews stay loaded when returning to the page', async () => {
   const f = fixture('/g/123')
   await f.reply(0, [
     {
       type: 'movie',
       mediaId: 'film',
       media: { title: 'Film' },
-      reviews: [review('first')],
-      nextReviewCursor: 'more',
-      visibleReviewCount: 2,
       averageScore: 4,
+      visibleReviewCount: 2,
+      reviews: [review('first')],
+      nextReviewCursor: 'title-next',
     },
   ])
   f.document.querySelectorAll('[data-expand]')[0].onclick()
@@ -393,162 +232,102 @@ test('refresh queued during title pagination runs when that request finishes', a
       target: { dataset: { titleSentinel: 'movie:film' } },
     },
   ])
-  f.events.focus()
-  assert.equal(f.requests.length, 2)
   await f.reply(1, [review('second')])
-  assert.equal(f.requests.length, 3)
-  assert.doesNotMatch(f.requests[2].url, /cursor=/)
+  const html = f.nodes.get('results').innerHTML
+  returnToPage(f)
+  assert.equal(f.requests.length, 2)
+  assert.equal(f.nodes.get('results').innerHTML, html)
+  assert.match(html, /aria-expanded="true"/)
+  assert.match(html, /second/)
 })
 
-test('rotating signed artwork tickets do not rebuild unchanged review cards', async () => {
+test('returning to the page never cancels in-flight initial or append requests', async () => {
   const f = fixture()
-  const item = (ticket) => ({
-    ...review('film'),
-    media: {
-      title: 'Film',
-      artworkUrl: '/api/v1/artwork/movie/42?ticket=' + ticket + '.abcdef',
-    },
-  })
-  await f.reply(0, [item('123')])
-  const results = f.nodes.get('results')
-  const writes = results.htmlWrites
-  f.events.interval()
-  await f.reply(1, [item('456')])
-  assert.equal(results.htmlWrites, writes)
+  returnToPage(f)
+  assert.equal(f.requests.length, 1)
+  assert.equal(f.requests[0].options.signal.aborted, false)
+  await f.reply(0, [review('first')], 'next')
+  f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
+  returnToPage(f)
+  assert.equal(f.requests.length, 2)
+  assert.equal(f.requests[1].options.signal.aborted, false)
+  await f.reply(1, [review('second')])
+  assert.match(f.nodes.get('results').innerHTML, /second/)
 })
 
-test('a stalled append cannot postpone privacy revalidation indefinitely', async () => {
+test('stale list cursors wait for a manual reload instead of replacing the page automatically', async () => {
+  for (const status of [400, 409]) {
+    const f = fixture()
+    await f.reply(0, [review('old')], 'next')
+    f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
+    await f.reply(1, [], null, status)
+    assert.equal(f.requests.length, 2)
+    assert.doesNotMatch(f.nodes.get('results').innerHTML, /skeleton/)
+    const button = f.nodes.get('sentinel').children.at(-1)
+    assert.equal(button.textContent, 'Reload reviews')
+    returnToPage(f)
+    assert.equal(f.requests.length, 2)
+    button.onclick()
+    assert.equal(f.requests.length, 3)
+    assert.doesNotMatch(f.requests[2].url, /cursor=/)
+    await f.reply(2, [review('fresh')])
+    assert.match(f.nodes.get('results').innerHTML, /fresh/)
+    assert.doesNotMatch(f.nodes.get('results').innerHTML, /<h2>old/)
+  }
+})
+
+test('first-page conflicts require a click for every retry', async () => {
+  const f = fixture()
+  await f.reply(0, [], null, 409)
+  assert.equal(f.requests.length, 1)
+  f.nodes.get('sentinel').children.at(-1).onclick()
+  await f.reply(1, [], null, 409)
+  assert.equal(f.requests.length, 2)
+  assert.equal(
+    f.nodes.get('sentinel').children.at(-1).textContent,
+    'Reload reviews',
+  )
+})
+
+test('title pagination errors never automatically reload the library', async () => {
+  for (const status of [400, 403, 404, 409, 503]) {
+    const f = fixture('/g/123')
+    await f.reply(0, [
+      {
+        type: 'movie',
+        mediaId: 'film',
+        media: { title: 'Film' },
+        averageScore: 4,
+        visibleReviewCount: 2,
+        reviews: [review('old')],
+        nextReviewCursor: 'title-next',
+      },
+    ])
+    f.document.querySelectorAll('[data-expand]')[0].onclick()
+    f.observers.at(-1).fn([
+      {
+        isIntersecting: true,
+        target: { dataset: { titleSentinel: 'movie:film' } },
+      },
+    ])
+    await f.reply(1, [], null, status)
+    assert.equal(f.requests.length, 2, String(status))
+    assert.doesNotMatch(f.nodes.get('results').innerHTML, /<h2>old|skeleton/)
+    f.nodes.get('sentinel').children.at(-1).onclick()
+    assert.equal(f.requests.length, 3)
+    assert.doesNotMatch(f.requests[2].url, /cursor=|film\/reviews/)
+  }
+})
+
+test('unavailable profile pagination removes identity without scheduling a refresh', async () => {
   const f = fixture()
   await f.reply(0, [review('private later')], 'next')
   f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
-  f.events.interval()
-  f.expire(10000)
-  await f.flush()
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /private later/)
-  assert.equal(f.requests[1].options.signal.aborted, true)
-  await f.reply(1, [review('private later')])
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /private later/)
-})
-
-test('unchanged profile avatar is retained after its loading class is removed', async () => {
-  const f = fixture()
-  const metadata = {
-    profile: {
-      username: 'Maya',
-      avatarUrl: 'https://cdn.discordapp.com/avatars/123/abc.webp',
-    },
-  }
-  await f.reply(0, [review('film')], null, 200, metadata)
-  const avatar = f.nodes.get('profile-avatar')
-  avatar.innerHTML = avatar.innerHTML.replace(' image-loading', '')
-  const writes = avatar.htmlWrites
-  f.events.interval()
-  await f.reply(1, [review('film')], null, 200, metadata)
-  assert.equal(avatar.htmlWrites, writes)
-})
-
-test('fresh artwork tickets retry a failed image without replacing its card', async () => {
-  const f = fixture()
-  const item = (ticket) => ({
-    ...review('film'),
-    media: {
-      title: 'Film',
-      artworkUrl: '/api/v1/artwork/movie/42?ticket=' + ticket + '.abcdef',
-    },
-  })
-  await f.reply(0, [item('123')])
-  const results = f.nodes.get('results')
-  const writes = results.htmlWrites
-  let src = '/api/v1/artwork/movie/42?ticket=123.abcdef'
-  const img = {
-    complete: true,
-    naturalWidth: 0,
-    parentElement: {
-      hidden: true,
-      classList: { add() {}, remove() {}, contains: () => true },
-    },
-    getAttribute: () => src,
-    setAttribute(name, value) {
-      src = value
-      this.complete = false
-    },
-  }
-  const query = f.document.querySelectorAll
-  f.document.querySelectorAll = (selector) =>
-    selector === '.artwork img' || selector === '.avatar img, .artwork img'
-      ? [img]
-      : query(selector)
-  f.events.interval()
-  await f.reply(1, [item('456')])
-  assert.equal(results.htmlWrites, writes)
-  assert.equal(img.parentElement.hidden, false)
-  assert.match(src, /ticket=456/)
-})
-
-test('new titles do not displace an expanded group at the old page boundary', async () => {
-  const f = fixture('/g/123')
-  const group = (id, day) => ({
-    type: 'movie',
-    mediaId: id,
-    media: { title: id },
-    latestReviewCreatedAt: '2026-09-' + day + 'T00:00:00.000Z',
-    averageScore: 4,
-    visibleReviewCount: 1,
-    reviews: [review(id)],
-    nextReviewCursor: null,
-  })
-  const a = group('a', '09'),
-    b = group('b', '08'),
-    c = group('c', '07')
-  await f.reply(0, [a, b], 'old-next')
-  f.document.querySelectorAll('[data-expand]')[1].onclick()
-  f.events.interval()
-  await f.reply(1, [group('new', '10'), a], 'fresh-next')
-  assert.equal(f.requests.length, 3)
-  await f.reply(2, [b, c], 'fresh-third')
-  assert.match(
-    f.nodes.get('results').innerHTML,
-    /data-expand="movie:b" aria-expanded="true"/,
-  )
-  assert.equal(f.requests.length, 3)
-})
-
-test('refresh stops past a deleted old boundary without scanning the whole library', async () => {
-  const f = fixture()
-  const r = (id, day) => ({
-    ...review(id),
-    createdAt: '2026-09-' + day + 'T00:00:00.000Z',
-  })
-  const a = r('a', '09'),
-    b = r('b', '08'),
-    c = r('c', '07')
-  await f.reply(0, [a, b], 'old-next')
-  f.events.interval()
-  await f.reply(1, [r('new', '10'), a], 'fresh-next')
-  assert.equal(f.requests.length, 3)
-  await f.reply(2, [c], 'more-older')
-  assert.equal(f.requests.length, 3)
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /<h2>b<\/h2>/)
-  assert.match(f.nodes.get('results').innerHTML, /<h2>c<\/h2>/)
-})
-test('409 resets instead of merging incompatible pages', async () => {
-  const f = fixture()
-  await f.reply(0, [review('old')], 'next')
-  f.observers.at(-1).fn([{ isIntersecting: true, target: { dataset: {} } }])
-  await f.reply(1, [], null, 409)
-  assert.equal(f.requests.length, 3)
-  assert.doesNotMatch(f.requests[2].url, /cursor=/)
-  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
-  await f.reply(2, [review('fresh')])
-  assert.doesNotMatch(f.nodes.get('results').innerHTML, /<h2>old/)
-})
-test('repeated first-page 409 stops automatic reset loop', async () => {
-  const f = fixture()
-  await f.reply(0, [], null, 409)
+  await f.reply(1, [], null, 404)
   assert.equal(f.requests.length, 2)
-  await f.reply(1, [], null, 409)
-  assert.equal(f.requests.length, 2)
-  assert.equal(f.nodes.get('sentinel').children.at(-1).textContent, 'Retry')
+  assert.doesNotMatch(f.nodes.get('results').innerHTML, /private later/)
+  assert.match(f.nodes.get('results').innerHTML, /not available/)
+  assert.equal(f.nodes.get('name').textContent, 'Review profile')
 })
 
 test('approved headings omit branding and marketing; input matches API bound', () => {

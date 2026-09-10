@@ -30,17 +30,10 @@
     window.fetch.bind(window),
     (item) => item.type + ':' + (server ? item.mediaId : item.id),
   )
-  let consecutiveConflicts = 0
-  let refreshing = null,
-    refreshPending = false,
-    lastRefresh = -Infinity,
-    renderedResults = null,
-    renderedIdentity = null
   const expanded = new Map()
   let observer,
     debounce,
-    generation = 0,
-    paused = false
+    generation = 0
   let q = '',
     type = 'all'
   const labels = {
@@ -141,9 +134,7 @@
     const key = item.type + ':' + item.mediaId
     const extra = expanded.get(key)
     return (
-      '<section class="card" data-card-key="' +
-      e(server ? key : item.type + ':' + item.id) +
-      '"><header class="title-header">' +
+      '<section class="card"><header class="title-header">' +
       artwork(item.media, item.type) +
       '<div class="title-copy"><p class="type">' +
       e(labels[item.type] || item.type) +
@@ -191,14 +182,19 @@
       return
     }
     if (state.error) {
+      const needsReload = [400, 409].includes(state.error.status)
       node.append(
         document.createTextNode(
-          initial ? 'Could not load reviews.' : 'Could not load more.',
+          needsReload
+            ? 'Reviews changed. Reload to continue.'
+            : initial
+            ? 'Could not load reviews.'
+            : 'Could not load more.',
         ),
       )
       const b = document.createElement('button')
       b.className = 'retry'
-      b.textContent = 'Retry'
+      b.textContent = needsReload ? 'Reload reviews' : 'Retry'
       node.append(b)
       const wait = state.error.retryAfter || 0
       if (wait) {
@@ -217,10 +213,10 @@
   }
   function render() {
     const activeExpand = document.activeElement?.dataset?.expand
-    let html = pager.items.map(card).join('')
+    $('results').innerHTML = pager.items.map(card).join('')
     $('results').setAttribute('aria-busy', String(pager.busy))
     if (!pager.items.length && !pager.busy && !pager.error)
-      html =
+      $('results').innerHTML =
         '<p class="empty">' +
         (q
           ? pager.data?.searchCoverage === 'partial'
@@ -228,43 +224,6 @@
             : 'No matching titles'
           : 'No public reviews to show yet.') +
         '</p>'
-    // Cursor changes are not content changes. Keep the DOM (and loaded images)
-    // intact when revalidation returns the same visible reviews.
-    const artworkSources = new Map()
-    const content = html.replace(
-      /src="(\/api\/v1\/artwork\/(?:movie|series|game|music)\/[A-Za-z0-9]+)\?ticket=\d+\.[a-f0-9]+"/g,
-      (source, path) => {
-        artworkSources.set(path, source.slice(5, -1))
-        return 'src="' + path + '"'
-      },
-    )
-    if (content !== renderedResults) {
-      const anchor = [...document.querySelectorAll('[data-card-key]')].find(
-        (node) => node.getBoundingClientRect().bottom > 0,
-      )
-      const top = anchor?.getBoundingClientRect().top
-      $('results').innerHTML = html
-      renderedResults = content
-      const replacement =
-        anchor &&
-        [...document.querySelectorAll('[data-card-key]')].find(
-          (node) => node.dataset.cardKey === anchor.dataset.cardKey,
-        )
-      if (replacement)
-        window.scrollBy(0, replacement.getBoundingClientRect().top - top)
-    } else {
-      // Keep not-yet-visible lazy images' tickets valid without reloading images
-      // that have already loaded or replacing their surrounding review cards.
-      document.querySelectorAll('.artwork img').forEach((img) => {
-        const src = img.getAttribute('src')
-        const next = artworkSources.get(src?.split('?')[0])
-        if (!img.naturalWidth && next && src !== next) {
-          img.parentElement.hidden = false
-          img.parentElement.classList.add('image-loading')
-          img.setAttribute('src', next)
-        }
-      })
-    }
     $('coverage').hidden = pager.data?.searchCoverage !== 'partial'
     status($('sentinel'), pager, () => load(), !pager.items.length)
     document.querySelectorAll('[data-expand]').forEach((b) => {
@@ -315,7 +274,6 @@
     })
   }
   function showLoading() {
-    renderedResults = null
     const line = (size) =>
       '<span class="skeleton skeleton-' + size + '"></span>'
     const skeletonReview =
@@ -354,7 +312,7 @@
     return path + '?' + params
   }
   async function load() {
-    if (paused || pager.busy || refreshing) return
+    if (pager.busy) return
     const g = generation
     const promise = pager.load(url(base, pager.cursor))
     if (!pager.items.length) showLoading()
@@ -364,57 +322,47 @@
     if (g !== generation) return
     const staleCursor = pager.error?.status === 400 && pager.cursor
     if (
-      (pager.error?.status === 409 || staleCursor) &&
-      consecutiveConflicts++ === 0
+      pager.error &&
+      ([403, 404, 409, 503].includes(pager.error.status) || staleCursor)
     ) {
-      $('notice').textContent = 'Reviews changed; refreshed'
-      reset()
-      return
-    }
-    if (pager.error && [403, 404, 503].includes(pager.error.status)) {
       unavailable(pager.error)
       return
     }
-    if (!pager.error) consecutiveConflicts = 0
     if (pager.error && !pager.data) {
       $('name').textContent = server ? 'Server library' : 'Review profile'
       $('name').className = ''
     }
-    if (pager.data) renderIdentity()
-    render()
-    if (refreshPending) refresh()
-  }
-  function renderIdentity() {
-    $('name').textContent = server
-      ? pager.data.guild?.name || 'Server library'
-      : pager.data.profile?.username || 'Review profile'
-    $('name').className = ''
-    const identity = server
-      ? ''
-      : avatar(pager.data.profile?.username, pager.data.profile?.avatarUrl)
-    if (renderedIdentity !== identity) {
-      $('profile-avatar').innerHTML = identity
-      renderedIdentity = identity
+    if (pager.data) {
+      $('name').textContent = server
+        ? pager.data.guild?.name || 'Server library'
+        : pager.data.profile?.username || 'Review profile'
+      $('name').className = ''
+      $('profile-avatar').innerHTML = server
+        ? ''
+        : avatar(pager.data.profile?.username, pager.data.profile?.avatarUrl)
     }
+    render()
   }
+  // A failed page request may invalidate what is already displayed. Clear it,
+  // but leave starting a new snapshot to an explicit Reload reviews/Retry click.
   function unavailable(error) {
     cancel()
     pager.error = error
     $('name').textContent = server ? 'Server library' : 'Review profile'
     $('name').className = ''
-    renderedIdentity = null
     $('profile-avatar').replaceChildren()
     $('coverage').hidden = true
-    $('results').innerHTML =
-      '<p class="empty">' +
-      (!server && [403, 404].includes(error.status)
-        ? 'This profile is not available.'
-        : 'Reviews temporarily unavailable. Try again shortly.') +
-      '</p>'
+    if (![400, 409].includes(error.status)) {
+      $('results').innerHTML =
+        '<p class="empty">' +
+        (!server && [403, 404].includes(error.status)
+          ? 'This profile is not available.'
+          : 'Reviews temporarily unavailable. Try again shortly.') +
+        '</p>'
+    }
     status($('sentinel'), pager, () => reset(), true)
   }
   function clearPrivate() {
-    renderedResults = null
     for (const ex of expanded.values()) ex.pager.reset()
     expanded.clear()
     pager.items = []
@@ -425,20 +373,12 @@
   // Invalidate in-flight pages and clear the list without loading anything.
   function cancel() {
     generation++
-    clearTimeout(refreshPending)
-    refreshPending = false
-    if (refreshing) {
-      clearTimeout(refreshing.timer)
-      for (const p of refreshing.pagers) p.reset()
-      refreshing = null
-    }
     pager.reset()
     clearPrivate()
   }
   function reset(preserveIdentity = false) {
     cancel()
     if (!preserveIdentity) {
-      renderedIdentity = null
       $('name').textContent = server ? 'Server library' : 'Review profile'
       $('name').className = 'skeleton-name'
       $('profile-avatar').replaceChildren()
@@ -446,126 +386,11 @@
     $('coverage').hidden = true
     load()
   }
-  // Match the API's creation-time ordering. Re-read through the old boundary,
-  // even if new entries at the front now require an extra page. A deleted tail
-  // stops at the next older entry instead of forcing a full-library scan.
-  function beforeBoundary(item, tail, grouped) {
-    if (!item || !tail) return false
-    const field = grouped ? 'latestReviewCreatedAt' : 'createdAt'
-    const a = Date.parse(item[field]),
-      b = Date.parse(tail[field])
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return false
-    if (a !== b) return a > b
-    if (item.type !== tail.type) return item.type < tail.type
-    return grouped ? item.mediaId < tail.mediaId : item.id > tail.id
-  }
-  async function refresh() {
-    if (document.hidden || refreshing || Date.now() - lastRefresh < 1000) return
-    if (pager.busy || [...expanded.values()].some((ex) => ex.pager.busy)) {
-      if (!refreshPending)
-        refreshPending = setTimeout(() => unavailable({ status: 503 }), 10000)
-      return
-    }
-    lastRefresh = Date.now()
-    if (!pager.data) {
-      reset()
-      return
-    }
-    const g = generation
-    const job = { pagers: new Set(), timer: null }
-    refreshing = job
-    const current = () => generation === g && refreshing === job
-    const fail = (error) => {
-      if (current()) unavailable(error)
-    }
-    // Bound the entire revalidation, including a stalled or disconnected fetch.
-    job.timer = refreshPending || setTimeout(() => fail({ status: 503 }), 10000)
-    refreshPending = false
-    const makePager = (key) => {
-      const p = createPager(window.fetch.bind(window), key)
-      job.pagers.add(p)
-      return p
-    }
-    const readTo = async (
-      p,
-      path,
-      previous,
-      first = false,
-      grouped = false,
-    ) => {
-      while (
-        current() &&
-        (first ||
-          (p.cursor &&
-            (p.items.length < previous.length ||
-              beforeBoundary(p.items.at(-1), previous.at(-1), grouped))))
-      ) {
-        first = false
-        const before = p.items.length
-        await p.load(url(path, p.cursor))
-        if (!current()) return
-        if (p.error) throw p.error
-        if (p.cursor && p.items.length === before) throw { status: 503 }
-      }
-    }
-    const fresh = makePager(
-      (item) => item.type + ':' + (server ? item.mediaId : item.id),
-    )
-    try {
-      await readTo(fresh, base, pager.items, true, server)
-      if (!current()) return
-      const refreshedTitles = new Map()
-      for (const [key, ex] of expanded) {
-        const item = fresh.items.find(
-          (item) => item.type + ':' + item.mediaId === key,
-        )
-        if (!item) continue
-        const p = makePager((r) => r.type + ':' + r.id)
-        p.items = [...(item.reviews || [])]
-        p.cursor = item.nextReviewCursor
-        await readTo(p, titlePath(item), ex.pager.items)
-        if (!current()) return
-        refreshedTitles.set(key, { pager: p, item })
-      }
-      // Publish a complete, newly checked set; never merge old private reviews.
-      pager.items = fresh.items
-      pager.cursor = fresh.cursor
-      pager.data = fresh.data
-      pager.error = null
-      for (const [key, ex] of expanded) {
-        ex.pager.reset()
-        const next = refreshedTitles.get(key)
-        if (next) expanded.set(key, next)
-        else expanded.delete(key)
-      }
-      clearTimeout(job.timer)
-      refreshing = null
-      renderIdentity()
-      render()
-    } catch (error) {
-      if (!current()) return
-      if ([400, 409].includes(error.status)) {
-        $('notice').textContent = 'Reviews changed; refreshed'
-        reset()
-      } else fail(error)
-    }
-  }
-  function titlePath(item) {
-    return (
-      base +
-      '/' +
-      encodeURIComponent(item.type) +
-      '/' +
-      encodeURIComponent(item.mediaId) +
-      '/reviews'
-    )
-  }
   function toggle(key) {
     if (expanded.has(key)) {
       expanded.get(key).pager.reset()
       expanded.delete(key)
       render()
-      if (refreshPending) refresh()
       return
     }
     const item = pager.items.find((x) => x.type + ':' + x.mediaId === key)
@@ -577,21 +402,31 @@
   }
   async function loadTitle(key) {
     const ex = expanded.get(key)
-    if (!ex || ex.pager.busy || refreshing) return
+    if (!ex || ex.pager.busy) return
     const g = generation
-    const promise = ex.pager.load(url(titlePath(ex.item), ex.pager.cursor))
+    const promise = ex.pager.load(
+      url(
+        base +
+          '/' +
+          encodeURIComponent(ex.item.type) +
+          '/' +
+          encodeURIComponent(ex.item.mediaId) +
+          '/reviews',
+        ex.pager.cursor,
+      ),
+    )
     render()
     await promise
     if (g !== generation || expanded.get(key) !== ex) return
     if (
       ex.pager.error &&
-      [403, 404, 409, 503].includes(ex.pager.error.status)
+      ([403, 404, 409, 503].includes(ex.pager.error.status) ||
+        (ex.pager.error.status === 400 && ex.pager.cursor))
     ) {
-      reset()
+      unavailable(ex.pager.error)
       return
     }
     render()
-    if (refreshPending) refresh()
   }
   function filters(fromHistory = false) {
     clearTimeout(debounce)
@@ -632,15 +467,5 @@
       }),
   )
   window.addEventListener('popstate', () => filters(true))
-  document.addEventListener('visibilitychange', () => {
-    paused = document.hidden
-    if (!paused) refresh()
-  })
-  window.addEventListener('focus', () => {
-    if (!document.hidden) refresh()
-  })
-  setInterval(() => {
-    if (!document.hidden) refresh()
-  }, 30000)
   filters(true)
 })()
