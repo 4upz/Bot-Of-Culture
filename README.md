@@ -161,9 +161,10 @@ focus and every 30 seconds; already received content cannot be retracted.
 
 For GCE, follow [the controlled deployment procedure](docs/deployment-durability.md).
 Persist configuration in `/var/lib/bot-of-culture/runtime.env`; COS boot restores
-its `/etc` link. Cloud Build builds and publishes images only. Manual rollout
-checks disk space, immutable images, configuration and startup, retains rollback
-artifacts, and avoids a whole-VM restart or blanket image pruning.
+its `/etc` link. The GitHub-connected Cloud Build trigger builds, publishes, and
+automatically rolls out merges to `master`. Rollout checks disk space, immutable
+images, configuration and startup, retains rollback artifacts, and avoids a
+whole-VM restart or blanket image pruning. Maintenance blocks automatic releases.
 
 The origin port 8080 is published on **loopback only**, behind the HTTPS proxy.
 Set `REVIEW_WEB_TRUSTED_PROXY_IPS` to the verified immediate proxy IP; only that
@@ -174,8 +175,8 @@ work deadline stops further queries and lowers each Mongo execution budget;
 unsettled database work retains its admission slot. These bounds do not replace
 DB/network timeouts or production monitoring.
 
-Public exposure, Server Members Intent, command registration, migration and
-production rollout remain explicit operational gates. See the
+Changes to public exposure, privileged Discord intents, command registration,
+or the database migration still need their own release procedure. See the
 [isolated capacity harness](scripts/review-web/load/README.md) for synthetic-only
 workload validation and its limitations.
 

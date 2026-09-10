@@ -1,7 +1,20 @@
-# Build/publish only. Deployment is a separately approved manual cutover; see
-# docs/deployment-durability.md. No metadata edits or whole-VM reset in CI.
+# GitHub master releases build, publish, and roll out the bot container.
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/$PROJECT_ID/bot-of-culture:$BUILD_ID', '.']
+  # Push explicitly: the images section is processed after all build steps.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/bot-of-culture:$BUILD_ID']
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: bash
+    args:
+      - scripts/deployment/deploy-from-build.sh
+      - '$PROJECT_ID'
+      - '$BUILD_ID'
+      - '$COMMIT_SHA'
+      - '$BRANCH_NAME'
+      - '$TRIGGER_NAME'
+    timeout: 1200s
 images:
   - 'gcr.io/$PROJECT_ID/bot-of-culture:$BUILD_ID'
+timeout: 1800s

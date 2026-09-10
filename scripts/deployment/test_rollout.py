@@ -1,4 +1,5 @@
 """Offline safety tests: no Docker daemon, network, or production credentials."""
+import hashlib
 import os
 import pathlib
 import subprocess
@@ -10,14 +11,21 @@ IMAGE = 'gcr.io/bot-of-culture/bot-of-culture@sha256:' + 'a' * 64
 ROLLBACK = 'gcr.io/bot-of-culture/bot-of-culture@sha256:' + 'b' * 64
 
 class RolloutTests(unittest.TestCase):
-    def run_case(self, failure):
+    def run_case(self, failure, automatic=False):
         with tempfile.TemporaryDirectory() as directory:
             base = pathlib.Path(directory)
+            (base / 'startup-script.sh').write_bytes((ROOT / 'startup-script.sh').read_bytes())
+            (base / 'accepted-image').write_text(ROLLBACK + '\n')
             (base / 'runtime.env').write_text('REVIEW_MIGRATION_READY=true\nWEB_ENABLED=true\nPUBLIC_WEB_BASE_URL=https://example.test\nREVIEW_WEB_TRUSTED_PROXY_IPS=172.17.0.1\n')
             (base / 'runtime.env').chmod(0o600)
             (base / 'docker').write_text('''#!/bin/bash
 printf '%s\\n' "$*" >> "$CALLS"
 case "$*" in
+  *'inspect --format {{.Config.Image}}'*)
+    if [[ "$FAILURE" == late_maintenance && ! -e "$BOT_STATE_DIR/maintenance" ]]; then
+      bash "$BOT_STATE_DIR/startup-script.sh" maintenance || exit 1
+    fi
+    echo "$CURRENT_IMAGE";;
   *'network inspect '*) echo 172.17.0.1;;
   *'pull '*) test "$FAILURE" != pull;;
   *'run --rm '*) test "$FAILURE" != config;;
@@ -33,12 +41,30 @@ esac
             (base / 'df').write_text('#!/bin/bash\necho "Filesystem 1024-blocks Used Available Capacity Mounted"\nif test "$FAILURE" = space; then echo "disk 100 90 10 90% /"; else echo "disk 9000000 1 8000000 1% /"; fi\n')
             (base / 'curl').write_text('#!/bin/bash\necho \'{"access_token":"test"}\'\n')
             (base / 'sleep').write_text('#!/bin/bash\nexit 0\n')
-            for name in ('docker', 'df', 'curl', 'sleep'):
+            (base / 'flock').write_text('#!/bin/bash\nexit 0\n')
+            for name in ('docker', 'df', 'curl', 'sleep', 'flock'):
                 (base / name).chmod(0o755)
-            env = dict(os.environ, PATH=str(base) + ':' + os.environ['PATH'], BOT_STATE_DIR=str(base), CALLS=str(base / 'calls'), FAILURE=failure)
-            result = subprocess.run(['bash', str(ROOT / 'startup-script.sh'), 'rollout', IMAGE, ROLLBACK, 'schema-compatible'], env=env, capture_output=True, text=True)
+            env = dict(os.environ, PATH=str(base) + ':' + os.environ['PATH'], BOT_STATE_DIR=str(base), CALLS=str(base / 'calls'), FAILURE=failure, CURRENT_IMAGE=ROLLBACK)
+            command = ['bash', str(ROOT / 'startup-script.sh'), 'rollout', IMAGE, ROLLBACK, 'schema-compatible']
+            if automatic:
+                checksum = hashlib.sha256((base / 'startup-script.sh').read_bytes()).hexdigest()
+                command = ['bash', str(ROOT / 'scripts/deployment/auto-rollout.sh'), IMAGE, '200', 'c' * 40, checksum]
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
             calls = (base / 'calls').read_text() if (base / 'calls').exists() else ''
             return result, calls
+
+    def test_automatic_release_cannot_undo_completed_maintenance(self):
+        result, calls = self.run_case('late_maintenance', automatic=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('maintenance', result.stderr)
+        self.assertIn('stop bot-of-culture', calls)
+        self.assertNotIn('start bot-of-culture', calls)
+        self.assertNotIn('pull ', calls)
+
+    def test_automatic_release_uses_shared_rollout_success_path(self):
+        result, calls = self.run_case('none', automatic=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('rename bot-of-culture bot-of-culture-retained-', calls)
 
     def test_boot_firewall_requires_both_approval_flags_and_is_idempotent(self):
         for flags in ((), ('caddy-enabled',), ('public-ingress-approved',), ('caddy-enabled', 'public-ingress-approved')):

@@ -37,8 +37,8 @@ case "${1:-boot}" in
       docker start cosigned-https
     fi
     exit 0;;
-  rollout) ;;
-  *) fail 'usage: startup-script.sh [boot|maintenance|rollout IMAGE ROLLBACK schema-compatible]' ;;
+  rollout|auto-rollout) ;;
+  *) fail 'usage: startup-script.sh [boot|maintenance|rollout|auto-rollout IMAGE ROLLBACK schema-compatible]' ;;
 esac
 [[ $# == 4 && "$4" == schema-compatible ]] || fail 'explicit schema-compatible rollback attestation required'
 IMAGE=$2
@@ -46,6 +46,14 @@ ROLLBACK=$3
 for ref in "$IMAGE" "$ROLLBACK"; do
   [[ "$ref" =~ ^gcr\.io/[a-z0-9-]+/bot-of-culture@sha256:[a-f0-9]{64}$ ]] || fail 'use immutable bot image digests'
 done
+if [[ "$1" == auto-rollout ]]; then
+  # Recheck under the same lock as manual maintenance and rollout. Maintenance
+  # or a manual release may have completed since the build wrapper's preflight.
+  [[ ! -e "$STATE/maintenance" ]] || fail 'maintenance is active; automatic rollout blocked'
+  [[ $(cat "$STATE/accepted-image") == "$ROLLBACK" ]] || fail 'accepted image changed; retry with the current recovery image'
+  [[ $(docker inspect --format '{{.Config.Image}}' "$NAME") == "$ROLLBACK" ]] || fail 'running container differs from the accepted image'
+  [[ "$IMAGE" != "$ROLLBACK" ]] || exit 0
+fi
 [[ -r "$RUNTIME" ]] || fail 'durable runtime.env missing'
 grep -qx 'REVIEW_MIGRATION_READY=true' "$RUNTIME" || fail 'migration readiness not recorded'
 # This deployment uses the default bridge behind a host-network Caddy. Require
