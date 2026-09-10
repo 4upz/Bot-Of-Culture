@@ -219,7 +219,11 @@
     status($('sentinel'), pager, load, !pager.items.length)
     await promise
     if (g !== generation) return
-    if (pager.error?.status === 409 && consecutiveConflicts++ === 0) {
+    const staleCursor = pager.error?.status === 400 && pager.cursor
+    if (
+      (pager.error?.status === 409 || staleCursor) &&
+      consecutiveConflicts++ === 0
+    ) {
       $('notice').textContent = 'Reviews changed; refreshed'
       reset()
       return

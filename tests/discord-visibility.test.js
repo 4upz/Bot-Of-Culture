@@ -76,3 +76,27 @@ test('source deleted or made private elsewhere redacts copied Discord content', 
     assert.equal(output.sharedFromUsername, null)
   }
 })
+test('batched source redaction applies the same policy with one lookup per page', async () => {
+  const { redactDiscordSources } = require('../src/reviews/writeStore')
+  const reviews = [
+    { userId: 'a', movieId: '42', comment: 'A', sharedFromUserId: 'visible', sharedFromUsername: 'V', sharedFromComment: 'v' },
+    { userId: 'b', movieId: '42', comment: 'B', sharedFromUserId: 'gone', sharedFromUsername: 'G', sharedFromComment: 'g' },
+    { userId: 'c', movieId: '42', comment: 'C' },
+  ]
+  let lookups = 0
+  const collection = { async findMany({ where }) {
+    lookups++
+    assert.deepEqual(where.userId, { in: ['visible', 'gone'] })
+    assert.deepEqual(where.movieId, { in: ['42'] })
+    return [{ userId: 'visible', movieId: '42', isPrivate: false }]
+  } }
+  const output = await redactDiscordSources(reviews, collection, 'movie', 'here')
+  assert.equal(lookups, 1)
+  assert.equal(output[0].sharedFromUsername, 'V')
+  assert.equal(output[1].sharedFromUsername, null)
+  assert.equal(output[1].sourceUnavailable, true)
+  assert.equal(output[1].comment, 'B')
+  assert.equal(output[2].sourceUnavailable, undefined)
+  assert.equal(lookups, 1)
+  assert.deepEqual(await redactDiscordSources([reviews[2]], { findMany: async () => { throw new Error('unexpected') } }, 'movie', 'here'), [reviews[2]])
+})

@@ -48,15 +48,18 @@ async function initBot() {
   await bot.initServices()
   bot.reviewMembership = new MembershipService(bot)
   if (webEnabled) bot.reviewMembership.start()
+  // Build (and validate the configuration of) the web app before login so a
+  // bad REVIEW_WEB_TRUSTED_PROXY_IPS cannot leave a logged-in bot without a
+  // listener and without a shutdown path.
+  const web = webEnabled
+    ? createWebApp(bot, bot.reviewMembership, bot.webRevision)
+    : null
   await bot.login(token)
 
   bot.user.setActivity('/review', {
     type: ActivityType.Watching,
   })
 
-  const web = webEnabled
-    ? createWebApp(bot, bot.reviewMembership, bot.webRevision)
-    : null
   const server = web?.app.listen(port, () =>
     console.log(`Review web listening on ${port}`),
   )
