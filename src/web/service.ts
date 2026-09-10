@@ -40,7 +40,6 @@ export class PublicReviewService {
     collection: string,
     pipeline: any[],
   ): Promise<any[]> {
-    this.check(work)
     if (++work.queries > 16)
       throw new HttpError(503, 'Reviews temporarily unavailable')
     const models: any = this.bot.db
@@ -75,9 +74,13 @@ export class PublicReviewService {
       : []
     if (prefs.length > 10000)
       throw new HttpError(503, 'Reviews temporarily unavailable')
-    return createHash('sha256')
-      .update(JSON.stringify([this.revision.value, prefs, titles]))
-      .digest('hex')
+    const digest = (parts: unknown[]) =>
+      createHash('sha256').update(JSON.stringify(parts)).digest('hex')
+    return {
+      full: digest([this.revision.value, prefs, titles]),
+      // Per-title expansion cursors bind to preferences only; derive it from the same snapshot.
+      prefsOnly: digest([this.revision.value, prefs, []]),
+    }
   }
   private async profilePublic(work: ReadWork, userId: string) {
     const prefs = await this.aggregate(work, 'ReviewPreference', [
@@ -110,7 +113,8 @@ export class PublicReviewService {
     }
     const roster = kind === 'profile' ? undefined : this.membership.get(id)
     if (kind === 'profile') await this.profilePublic(work, id)
-    const baseGeneration = await this.generation(work, Boolean(query.q))
+    const baseSnapshot = await this.generation(work, Boolean(query.q))
+    const baseGeneration = baseSnapshot.full
     const generation = baseGeneration + ':' + (roster?.generation || 0)
     const scope = `${kind}:${id}:${mediaType || ''}:${mediaId || ''}`
     const binding = { scope, generation, type: query.type, q: query.q }
@@ -193,7 +197,7 @@ export class PublicReviewService {
       coverage = page?.coverage || []
       const rows = page?.titles || []
       const expansionGeneration = query.q
-        ? (await this.generation(work, false)) + ':' + roster.generation
+        ? baseSnapshot.prefsOnly + ':' + roster.generation
         : generation
       const hasMore = rows.length > query.limit
       rows.splice(query.limit)
@@ -269,7 +273,7 @@ export class PublicReviewService {
     // Recheck after query work: a completed opt-out or roster change cannot leak an in-flight response.
     if (kind === 'profile') await this.profilePublic(work, id)
     if (
-      (await this.generation(work, Boolean(query.q))) !== baseGeneration ||
+      (await this.generation(work, Boolean(query.q))).full !== baseGeneration ||
       (roster && this.membership.get(id).generation !== roster.generation)
     )
       throw new HttpError(409, 'Results changed; refresh to continue')
@@ -378,10 +382,11 @@ export class PublicReviewService {
     const keys = new Map<string, any>()
     const sourceKey = (row: any, userId: string) =>
       JSON.stringify([row.type, row.mediaId, userId])
+    const members = options.members && new Set(options.members)
     for (const row of rows) {
       if (
         row.sharedFromUserId &&
-        (!options.members || options.members.includes(row.sharedFromUserId))
+        (!members || members.has(row.sharedFromUserId))
       )
         keys.set(sourceKey(row, row.sharedFromUserId), {
           type: row.type,

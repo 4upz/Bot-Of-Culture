@@ -24,7 +24,7 @@ export default {
         if (state) {
           isPublic = state === 'public'
           await setWebVisibility(bot.db, interaction.user.id, isPublic)
-          ;(bot as any).webRevision?.bump()
+          bot.webRevision.bump()
         } else {
           isPublic = await getWebVisibility(bot.db, interaction.user.id)
         }

@@ -39,7 +39,7 @@ export async function deleteReviewForTarget(
     })
     if (review) {
       await (<any>collection).delete({ where: { id: review.id } })
-      ;(client as any).webRevision?.bump()
+      client.webRevision.bump()
       await interaction.editReply({
         content: `Your review for that ${type} was successfully deleted! 🎉`,
         components: [],

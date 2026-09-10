@@ -95,7 +95,6 @@ export function createWebApp(
       const abort = () => controller.abort()
       const timer = setTimeout(abort, Math.max(0, deadline - Date.now()))
       timer.unref()
-      req.once('aborted', abort)
       res.once('close', abort)
       try {
         const result = await service.read(
@@ -124,7 +123,6 @@ export function createWebApp(
         }
       } finally {
         clearTimeout(timer)
-        req.removeListener('aborted', abort)
         res.removeListener('close', abort)
         // A disconnect/deadline cannot release capacity while DB work still runs.
         active--

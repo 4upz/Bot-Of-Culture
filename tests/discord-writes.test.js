@@ -134,3 +134,15 @@ test('sharing private source restricts existing public review and invalidates pu
   assert.equal(row.originGuildId, 'old-origin')
   assert.equal(bumps, 1)
 })
+
+test('an original review clears the attribution left by an earlier co-sign', async () => {
+  const f = fixture({ id: 'one', userId: 'a', movieId: '42', score: 4, isPrivate: true, sharedFromUserId: 'src', sharedFromUsername: 'Src', sharedFromComment: 'quoted', isQuote: true, updatedAt: null })
+  await saveGlobalReview(f.collection, 'movie', { userId: 'a', movieId: '42', score: 5, comment: 'mine', guildId: 'g', sharedFromUserId: null, sharedFromUsername: null, sharedFromComment: null, isQuote: false })
+  assert.equal(f.row().sharedFromUserId, null)
+  assert.equal(f.row().sharedFromUsername, null)
+  assert.equal(f.row().sharedFromComment, null)
+  assert.equal(f.row().isQuote, false)
+  assert.equal(f.row().comment, 'mine')
+  assert.equal(f.row().isPrivate, true)
+  assert.ok(f.row().updatedAt instanceof Date)
+})
