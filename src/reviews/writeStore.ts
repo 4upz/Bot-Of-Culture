@@ -1,4 +1,5 @@
 import { ReviewType } from '../utils/types'
+import { normalizeTitle } from '../web/query'
 
 const contentFields = ['score', 'comment', 'hoursPlayed', 'replayability', 'sharedFromUserId', 'sharedFromUsername', 'sharedFromComment', 'isQuote']
 
@@ -49,7 +50,8 @@ export function canDisplayReview(review: any, guildId: string | null): boolean {
 }
 
 export function discordVisibilityWhere(guildId: string | null) {
-  const publicRules: any[] = [{ isPrivate: false }, { isPrivate: { isSet: false } }]
+  // isPrivate is a required Boolean; Prisma rejects `isSet` on non-optional fields.
+  const publicRules: any[] = [{ isPrivate: false }]
   if (guildId) publicRules.push({ isPrivate: true, OR: [
     { originGuildId: guildId },
     { AND: [{ OR: [{ originGuildId: null }, { originGuildId: { isSet: false } }] }, { guildId }] },
@@ -57,11 +59,28 @@ export function discordVisibilityWhere(guildId: string | null) {
   return { OR: publicRules }
 }
 
+function withoutSource(review: any) {
+  return { ...review, sharedFromUserId: null, sharedFromUsername: null, sharedFromComment: null, sourceUnavailable: true }
+}
+
 export async function redactDiscordSource(review: any, collection: any, type: ReviewType, guildId: string | null) {
   if (!review.sharedFromUserId) return review
   const source = await collection.findFirst({ where: { userId: review.sharedFromUserId, [`${type}Id`]: review[`${type}Id`] } })
   if (canDisplayReview(source, guildId)) return review
-  return { ...review, sharedFromUserId: null, sharedFromUsername: null, sharedFromComment: null, sourceUnavailable: true }
+  return withoutSource(review)
+}
+
+/** Same policy as redactDiscordSource, resolving every copied source of a page in one query. */
+export async function redactDiscordSources(reviews: any[], collection: any, type: ReviewType, guildId: string | null) {
+  const field = `${type}Id`
+  const shared = reviews.filter((review) => review.sharedFromUserId)
+  if (!shared.length) return reviews
+  const sources = await collection.findMany({ where: {
+    userId: { in: [...new Set(shared.map((review) => review.sharedFromUserId))] },
+    [field]: { in: [...new Set(shared.map((review) => review[field]))] },
+  } })
+  const visible = new Set(sources.filter((source: any) => canDisplayReview(source, guildId)).map((source: any) => JSON.stringify([source.userId, source[field]])))
+  return reviews.map((review) => !review.sharedFromUserId || visible.has(JSON.stringify([review.sharedFromUserId, review[field]])) ? review : withoutSource(review))
 }
 
 /** Reuse already fetched provider names; enrichment must not undo a saved review. */
@@ -70,7 +89,7 @@ export async function rememberMediaTitle(db: any, type: ReviewType, mediaId: str
   try {
     const title = target.title.trim()
     if (!title) return
-    const normalizedTitle = title.normalize('NFKC').toLowerCase().trim().replace(/\s+/g, ' ')
+    const normalizedTitle = normalizeTitle(title)
     const existing = await db.mediaTitle.findUnique({ where: { type_mediaId: { type, mediaId } } })
     if (existing?.title === title && existing?.normalizedTitle === normalizedTitle) return
     const data = { title, normalizedTitle, fetchedAt: new Date() }

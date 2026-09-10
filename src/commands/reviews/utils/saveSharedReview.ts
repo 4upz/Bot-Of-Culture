@@ -8,7 +8,7 @@ import {
 } from 'discord.js'
 import { BotClient } from '../../../Bot'
 import { ReviewType } from '../../../utils/types'
-import { createReviewEmbed, getShareQuoteCount } from './index'
+import { createReviewEmbed, getByIdForType, getShareQuoteCount } from './index'
 
 export async function saveSharedReview(
   interaction: StringSelectMenuInteraction | any,
@@ -75,16 +75,7 @@ export async function saveSharedReview(
     review = await redactDiscordSource(review, collection, type, interaction.guildId)
 
     // Fetch the media details and broadcast
-    let reviewTarget
-    if (type === 'movie') {
-      reviewTarget = await bot.movies.getById(mediaId)
-    } else if (type === 'game') {
-      reviewTarget = await bot.games.getById(mediaId)
-    } else if (type === 'music') {
-      reviewTarget = await bot.music.getById(mediaId)
-    } else {
-      reviewTarget = await bot.movies.getSeriesById(mediaId)
-    }
+    const reviewTarget = await getByIdForType(type, mediaId, bot)
 
     await rememberMediaTitle(bot.db, type, mediaId, reviewTarget)
 

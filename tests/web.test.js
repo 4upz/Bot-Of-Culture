@@ -141,3 +141,38 @@ test('co-sign source attribution never serializes a copied excerpt', () => {
   assert.equal(review.sharedFromComment, undefined)
   assert.equal(review.sharedFromUsername, 'B')
 })
+
+test('a failed fetch for one guild does not invalidate another guild in flight', async () => {
+  let finish
+  const good = {
+    name: 'Good',
+    memberCount: 1,
+    members: {
+      fetch: () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    },
+  }
+  const bad = {
+    name: 'Bad',
+    memberCount: 5,
+    members: { fetch: async () => new Map([['1', {}]]) },
+  }
+  const bot = {
+    isReady: () => true,
+    guilds: {
+      cache: new Map([
+        ['good', good],
+        ['bad', bad],
+      ]),
+    },
+  }
+  const service = new MembershipService(bot)
+  const pending = service.sync('good')
+  await service.sync('bad')
+  assert.throws(() => service.get('bad'))
+  finish(new Map([['9', {}]]))
+  await pending
+  assert.deepEqual(service.get('good').members, ['9'])
+})

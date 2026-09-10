@@ -12,6 +12,7 @@ export class MembershipService {
   private pending = new Map<string, Promise<void>>()
   private changes = new Map<string, Array<{ id: string; add: boolean }>>()
   private invalidations = 0
+  private epochs = new Map<string, number>()
   private timer: ReturnType<typeof setInterval>
   constructor(private bot: BotClient, private now = () => Date.now()) {}
   get(id: string) {
@@ -33,8 +34,13 @@ export class MembershipService {
       generation: s.generation,
     }
   }
+  private epoch(id: string) {
+    return `${this.invalidations}:${this.epochs.get(id) || 0}`
+  }
   invalidate(id?: string) {
-    this.invalidations++
+    // A targeted invalidation must not fail every other guild's in-flight fetch.
+    if (id) this.epochs.set(id, (this.epochs.get(id) || 0) + 1)
+    else this.invalidations++
     for (const [key, s] of this.snapshots)
       if (!id || key === id) {
         s.ready = false
@@ -66,14 +72,14 @@ export class MembershipService {
       this.invalidate(id)
       return
     }
-    const epoch = this.invalidations
+    const epoch = this.epoch(id)
     this.changes.set(id, [])
     try {
       const result = await guild.members.fetch({ time: 30000 })
       if (result.size < guild.memberCount)
         throw Error('Incomplete member snapshot')
       if (
-        epoch !== this.invalidations ||
+        epoch !== this.epoch(id) ||
         !this.bot.isReady() ||
         !this.bot.guilds.cache.has(id)
       )

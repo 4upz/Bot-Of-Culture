@@ -1,4 +1,4 @@
-import { discordVisibilityWhere, redactDiscordSource } from '../../../reviews/writeStore'
+import { discordVisibilityWhere, redactDiscordSources } from '../../../reviews/writeStore'
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -204,7 +204,7 @@ export async function getReviewsForType(
       ...discordVisibilityWhere(guildId),
     },
   })
-  return Promise.all(reviews.map((review: any) => redactDiscordSource(review, collection, type as ReviewType, guildId)))
+  return redactDiscordSources(reviews, collection, type as ReviewType, guildId)
 }
 
 export function calculatePropertyAverage(
