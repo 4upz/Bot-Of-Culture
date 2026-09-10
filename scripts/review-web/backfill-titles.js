@@ -11,7 +11,22 @@ function extractTitle(type, id, payload) {
   return title.trim()
 }
 function normalizeTitle(title) { return title.normalize('NFKC').toLocaleLowerCase('en-US').trim().replace(/\s+/g, ' ') }
-async function fetchTitle(type, id, fetcher = fetch, sleep = ms => new Promise(r => setTimeout(r, ms))) {
+function extractMetadata(type, id, payload) {
+  const title = extractTitle(type, id, payload)
+  const record = type === 'game' ? payload.find(r => String(r.id) === id) : payload
+  let imageUrl = null
+  if ((type === 'movie' || type === 'series') && typeof record.poster_path === 'string' && /^\/[\w.-]+$/.test(record.poster_path))
+    imageUrl = 'https://image.tmdb.org/t/p/w500' + record.poster_path
+  if (type === 'game' && typeof record.cover?.url === 'string')
+    imageUrl = record.cover.url.replace(/^\/\//, 'https://').replace('t_thumb', 't_cover_big')
+  if (type === 'music') imageUrl = record.images?.[0]?.url || null
+  try {
+    const url = new URL(imageUrl)
+    imageUrl = url.protocol === 'https:' && !url.username && !url.password && url.href.length <= 2048 ? url.href : null
+  } catch { imageUrl = null }
+  return { title, imageUrl }
+}
+async function fetchMetadata(type, id, fetcher = fetch, sleep = ms => new Promise(r => setTimeout(r, ms))) {
   if (type === 'music' ? !/^[a-zA-Z0-9]{22}$/.test(id) : !/^[0-9]+$/.test(id)) throw new Error('Invalid media ID')
   let url, init
   if (type === 'movie' || type === 'series') {
@@ -21,7 +36,7 @@ async function fetchTitle(type, id, fetcher = fetch, sleep = ms => new Promise(r
   } else if (type === 'game') {
     if (!process.env.IGDB_ACCESS_TOKEN || !process.env.IGDB_CLIENT_ID) throw new Error('IGDB credentials required')
     url = 'https://api.igdb.com/v4/games'
-    init = { method: 'POST', headers: { Authorization: `Bearer ${process.env.IGDB_ACCESS_TOKEN}`, 'Client-ID': process.env.IGDB_CLIENT_ID, 'Content-Type': 'text/plain' }, body: `fields name; where id = ${id}; limit 1;` }
+    init = { method: 'POST', headers: { Authorization: `Bearer ${process.env.IGDB_ACCESS_TOKEN}`, 'Client-ID': process.env.IGDB_CLIENT_ID, 'Content-Type': 'text/plain' }, body: `fields name, cover.url; where id = ${id}; limit 1;` }
   } else if (type === 'music') {
     if (!process.env.SPOTIFY_ACCESS_TOKEN) throw new Error('SPOTIFY_ACCESS_TOKEN required')
     url = `https://api.spotify.com/v1/albums/${id}`
@@ -31,7 +46,7 @@ async function fetchTitle(type, id, fetcher = fetch, sleep = ms => new Promise(r
     let response
     try { response = await fetcher(url, { ...init, signal: AbortSignal.timeout(10000) }) }
     catch { if (attempt === 2) throw new Error('Provider unavailable'); await sleep(500 * 2 ** attempt); continue }
-    if (response.ok) return extractTitle(type, id, await response.json())
+    if (response.ok) return extractMetadata(type, id, await response.json())
     if ((response.status === 429 || response.status >= 500) && attempt < 2) {
       const retry = Number(response.headers?.get('retry-after'))
       await sleep(Number.isFinite(retry) && retry > 0 ? Math.min(retry * 1000, 10000) : 500 * 2 ** attempt)
@@ -40,10 +55,14 @@ async function fetchTitle(type, id, fetcher = fetch, sleep = ms => new Promise(r
     throw new Error(`Provider status ${response.status}`)
   }
 }
+async function fetchTitle(type, id, fetcher, sleep) {
+  return (await fetchMetadata(type, id, fetcher, sleep)).title
+}
 async function run() {
   const args = process.argv.slice(2)
   const mode = args[0] && !args[0].startsWith('--') ? args.shift() : 'dryrun'
   if (!['dryrun', 'apply'].includes(mode)) throw new Error('Mode: dryrun (default) or apply')
+  const artwork = args.includes('--artwork')
   const databaseName = args[args.indexOf('--database') + 1]
   if (!args.includes('--database') || !databaseName || !process.env.MIGRATION_DATABASE_URL) throw new Error('Require --database and MIGRATION_DATABASE_URL')
   const client = new MongoClient(process.env.MIGRATION_DATABASE_URL, { serverSelectionTimeoutMS: 10000 })
@@ -51,24 +70,34 @@ async function run() {
   try {
     const db = client.db(databaseName), titles = db.collection('MediaTitle')
     if (mode === 'apply') await titles.createIndex({ type: 1, mediaId: 1 }, { unique: true })
-    let missing = 0, written = 0, failed = 0
+    let missing = 0, written = 0, failed = 0, withoutArtwork = 0
     for (const [collection, field] of Object.entries(COLLECTIONS)) {
       // Small-database distinct enumeration; requests are serial and bounded.
       for (const mediaId of await db.collection(collection).distinct(field)) {
         const type = TYPES[collection]
-        if (await titles.findOne({ type, mediaId })) continue
+        const existing = await titles.findOne({ type, mediaId })
+        if (existing && (!artwork || existing.imageUrl)) continue
         missing++
         if (mode !== 'apply') continue
         try {
-          const title = await fetchTitle(type, mediaId)
-          await titles.updateOne({ type, mediaId }, { $setOnInsert: { type, mediaId, title, normalizedTitle: normalizeTitle(title), fetchedAt: new Date() } }, { upsert: true })
-          written++
+          const { title, imageUrl } = await fetchMetadata(type, mediaId)
+          if (!imageUrl) withoutArtwork++
+          if (existing) {
+            // Retain last-known names, fetchedAt/cursor generations, and concurrent artwork writes.
+            if (imageUrl) {
+              const result = await titles.updateOne({ type, mediaId, imageUrl: { $in: [null, ''] } }, { $set: { imageUrl } })
+              written += result.modifiedCount
+            }
+          } else {
+            const result = await titles.updateOne({ type, mediaId }, { $setOnInsert: { type, mediaId, title, normalizedTitle: normalizeTitle(title), imageUrl, fetchedAt: new Date() } }, { upsert: true })
+            written += result.upsertedCount
+          }
         } catch { failed++; console.error(JSON.stringify({ type, mediaId, status: 'unavailable' })) }
       }
     }
-    console.log(JSON.stringify({ mode, missing, written, failed }))
+    console.log(JSON.stringify({ mode, artwork, missing, written, failed, withoutArtwork }))
     if (failed) process.exitCode = 1
   } finally { await client.close() }
 }
 if (require.main === module) run().catch(() => { console.error('Title backfill stopped; check target configuration.'); process.exitCode = 1 })
-module.exports = { extractTitle, normalizeTitle, fetchTitle }
+module.exports = { extractTitle, extractMetadata, normalizeTitle, fetchTitle, fetchMetadata }

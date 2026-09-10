@@ -184,6 +184,55 @@
       '</span>'
     )
   }
+  function imageUrl(value) {
+    if (typeof value !== 'string' || value.length > 2048) return ''
+    try {
+      const url = new URL(value)
+      return url.protocol === 'https:' && !url.username && !url.password
+        ? escape(url.href)
+        : ''
+    } catch {
+      return ''
+    }
+  }
+  function avatar(username, url) {
+    const src = imageUrl(url)
+    return (
+      '<span class="avatar' +
+      (src ? ' image-loading' : '') +
+      '" aria-hidden="true"><span>' +
+      escape((username || '?').slice(0, 2).toUpperCase()) +
+      '</span>' +
+      (src
+        ? '<img src="' +
+          src +
+          '" alt="" width="34" height="34" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
+        : '') +
+      '</span>'
+    )
+  }
+  function artwork(media, type) {
+    const lookup = media?.artworkUrl
+    const src =
+      imageUrl(media?.imageUrl) ||
+      (typeof lookup === 'string' &&
+      /^\/api\/v1\/artwork\/(movie|series|game|music)\/[A-Za-z0-9]+\?ticket=\d+\.[a-f0-9]+$/.test(
+        lookup,
+      )
+        ? escape(lookup)
+        : '')
+    if (!src) return ''
+    return (
+      '<div class="artwork image-loading' +
+      (type === 'music' ? ' artwork-square' : '') +
+      '">' +
+      '<img src="' +
+      src +
+      '" alt="' +
+      escape((media.title || 'Title') + ' artwork') +
+      '" width="80" height="120" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>'
+    )
+  }
   function createPager(fetcher, key) {
     let generation = 0,
       controller
@@ -248,7 +297,7 @@
     }
     return state
   }
-  const api = { escape, markdown, stars, createPager }
+  const api = { escape, markdown, stars, avatar, artwork, createPager }
   if (typeof module !== 'undefined') module.exports = api
   else root.ReviewViewer = api
 })(typeof window === 'undefined' ? globalThis : window)

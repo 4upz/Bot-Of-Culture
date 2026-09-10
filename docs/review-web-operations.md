@@ -62,16 +62,16 @@ Before rollback, disable web serving, pause writers, export post-migration write
 
 Original documents are restored with their original `_id` and complete BSON payload. Identical existing originals are skipped. A canonical before-image is restored only if its current checksum matches the expected migration output, or the document is missing. Any differing current content blocks that group and must be exported/reconciled manually; no later edits are overwritten. Missing duplicates can be reinserted; an existing mismatched ID blocks restoration. New IDs outside the manifest and all preference records remain untouched. Earlier groups may have completed before a later group conflicts; rerun after reconciliation with the same manifest. Check restored baseline documents/counts on the disposable database and explicitly reconcile legitimate later records before declaring recovery complete. The baseline `verify` mode checks applied state, not rollback state.
 
-## Title-only backfill
+## Title and artwork backfill
 
 ```sh
 node scripts/review-web/backfill-titles.js --database restored_fixture
 node scripts/review-web/backfill-titles.js apply --database restored_fixture
 ```
 
-Default dry run only reports missing distinct `(type, mediaId)` titles; it makes no provider requests and writes nothing. Apply enumerates IDs from the four review collections and writes only missing `MediaTitle` rows using a unique type/mediaId key. Existing last-known titles are retained. Each request extracts only provider ID and title/name; absent artwork, credits, episode arrays or album artists cannot break title extraction. It stores title, NFKC/lowercase/whitespace-normalized title and fetchedAt. Provider requests are serial, timeout after 10 seconds, and retry at most three total attempts on network errors, HTTP 429 or 5xx with bounded backoff. Invalid IDs and mismatched provider IDs are rejected.
+Default dry run only reports missing distinct `(type, mediaId)` titles; it makes no provider requests and writes nothing. Apply enumerates IDs from the four review collections and writes only missing `MediaTitle` rows using a unique type/mediaId key. Existing last-known titles are retained. Each request validates the provider ID and extracts title/name plus optional artwork. Absent artwork, credits, episode arrays or album artists cannot break title extraction. It stores title, NFKC/lowercase/whitespace-normalized title, fetchedAt, and an optional HTTPS imageUrl. Discord review saves also remember already fetched artwork. Review JSON requests only read stored metadata and cached Discord avatars. Missing artwork receives a signed same-origin image URL; the browser loads it lazily, independently of the reviews. The image endpoint checks the cache, queries the provider if needed, saves the image URL, and redirects the browser to the provider CDN. Public requests never call Discord REST endpoints. Provider requests are serial, timeout after 10 seconds, and retry at most three total attempts on network errors, HTTP 429 or 5xx with bounded backoff. Invalid IDs and mismatched provider IDs are rejected.
 
-Use `TMDB_TOKEN` (bearer), `IGDB_CLIENT_ID` plus `IGDB_ACCESS_TOKEN`, and `SPOTIFY_ACCESS_TOKEN` for the required provider types. These are operator-supplied current tokens; the one-off script does not refresh them or initialize the bot. Expired tokens and missing names leave metadata incomplete, produce an ID-only failure record and a nonzero exit status; rerunning resumes missing rows. No title is fabricated. No queue, background job service, Redis, artwork store or public archive endpoint is introduced.
+Use `TMDB_TOKEN` (bearer), `IGDB_CLIENT_ID` plus `IGDB_ACCESS_TOKEN`, and `SPOTIFY_ACCESS_TOKEN` for the required provider types. These are operator-supplied current tokens; the one-off script does not refresh them or initialize the bot. Expired tokens and missing names leave metadata incomplete, produce an ID-only failure record and a nonzero exit status; rerunning resumes missing rows. No title is fabricated. No separate background worker, Redis, separate artwork store or public archive endpoint is introduced.
 
 For the intended small database, Mongo cursors use batches of 100 but the audit holds review originals in memory to produce one inspectable manifest. Distinct title IDs are likewise enumerated in memory. Large databases require an independently reviewed streaming strategy. Pure fixture verification: `node --test tests/migration.test.js`. To repeat the isolated Mongo integration tests, use a disposable MongoDB 7 replica set bound to `127.0.0.1:27028` and run:
 
@@ -92,3 +92,24 @@ when finished. Set both test variables when running `yarn test` to include all
 integration cases. Ordinary `yarn test` safely skips the three Mongo integration
 tests without these variables. See the README for runtime flags and HTTPS/intent
 setup. All production actions require separate authorization.
+
+### Optional artwork warmup
+
+Historical titles acquire artwork automatically when viewed. To populate images ahead of visits, optionally run the existing backfill with `--artwork` using the same database and provider credentials:
+
+```sh
+yarn reviews:titles dryrun --database YOUR_DATABASE --artwork
+yarn reviews:titles apply --database YOUR_DATABASE --artwork
+```
+
+The dry run counts missing titles and existing titles without artwork and performs no writes or provider requests. Apply adds missing images while preserving existing title text, normalization, and fetchedAt (so artwork enrichment does not invalidate search cursors). It never overwrites an existing image. `withoutArtwork` counts successful provider responses without an image; those titles use a text-only header and can be retried on a later run. This warmup is optional; the viewer handles cache misses on demand using the bot’s existing provider credentials and token refresh.
+
+Regenerate the Prisma client as part of the build (`yarn prisma:generate`). `MediaTitle.imageUrl` is optional; existing MongoDB documents need no schema migration. User avatars come from the Discord cache populated by membership sync, with initials when a user is uncached or an image fails. Cosigns remain separate paginated entries and are labeled independently of quotes; hidden/deleted source identities stay redacted.
+
+### On-demand artwork limits
+
+Review results issue signed artwork tickets valid for up to 15 minutes. Arbitrary or altered title requests are rejected before database/provider work. The endpoint returns only public provider artwork; it never returns review text or author identity. Images use the existing failure fallback when a lookup cannot complete.
+
+Artwork uses its own admission pool (32 waiting HTTP requests and 32 distinct cache misses per process), separate from the review API. TMDB movie/series requests share one queue; IGDB and Spotify each have another. Each queue runs one lookup at a time, starting at most twice per second. Queued lookups expire after 10 seconds; provider requests and token refresh share a 5-second deadline. Provider HTTP 429 blocks that provider queue for its Retry-After interval (60 seconds when absent). The HTTP image response times out after 15 seconds without releasing the bound on unfinished work.
+
+Successful URLs are persisted in MediaTitle and kept in a bounded 512-entry memory cache for an hour. Missing artwork is cached in memory for six hours; other failures for one minute, or the provider's Retry-After interval. Restarting clears memory cooldowns but retains persisted URLs. Artwork-only writes retain existing names, normalization, and fetchedAt; a previously unknown title can be created from validated provider metadata. No manual backfill or additional provider credentials are required.

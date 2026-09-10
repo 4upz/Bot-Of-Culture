@@ -1,6 +1,7 @@
 import needle, { BodyData } from 'needle'
 import { MusicSearchResult, SearchResult } from 'src/utils/types'
 import Service from './Service'
+import { providerJson } from './artwork'
 
 export default class MusicService extends Service {
   private readonly clientId: string
@@ -15,7 +16,11 @@ export default class MusicService extends Service {
     this.clientSecret = clientSecret
   }
 
-  async initAuthToken() {
+  getArtwork(id: string, signal: AbortSignal) {
+    return this.readArtwork('music', id, signal, (s) => this.initAuthToken(s))
+  }
+
+  async initAuthToken(signal?: AbortSignal) {
     const headers = {
       Authorization:
         'Basic ' +
@@ -29,22 +34,22 @@ export default class MusicService extends Service {
     const defaultErrorMessage =
       'Cannot authorize via Spotify. Something went wrong.'
 
-    const response = await needle(
-      'post',
+    const response = await providerJson(
       'https://accounts.spotify.com/api/token',
-      body,
-      { headers },
+      {
+        method: 'POST',
+        body: new URLSearchParams(body),
+        headers,
+        signal,
+      },
     ).catch((error) => {
       console.log(defaultErrorMessage)
       throw error
     })
 
-    if (response.statusCode !== 200) {
-      const error = response.body.error ?? defaultErrorMessage
-      throw new Error('[Music Service] ' + error)
-    }
-
-    this.setAuthHeader(response.body.access_token)
+    if (typeof response.access_token !== 'string' || !response.access_token)
+      throw Error('Spotify authorization token missing')
+    this.setAuthHeader(response.access_token)
   }
 
   async search(query: string): Promise<SearchResult[]> {

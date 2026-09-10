@@ -3,6 +3,13 @@ import { SearchResult, SeriesSearchResult } from 'src/utils/types'
 import Service from './Service'
 
 export default class MovieService extends Service {
+  getArtwork(
+    id: string,
+    signal: AbortSignal,
+    type: 'movie' | 'series' = 'movie',
+  ) {
+    return this.readArtwork(type, id, signal)
+  }
   constructor(token: string) {
     if (!token)
       throw new Error('Missing or incorrect TMDB API Authorization token')

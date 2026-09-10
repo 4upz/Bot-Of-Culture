@@ -102,3 +102,25 @@ test('migration CLI rejects unknown, duplicate, missing and non-dryrun override 
   const {parseArgs}=require('../scripts/review-web/migrate')
   for(const args of [['dryrun','--prefer-production'],['dryrun','--winner-overrides'],['dryrun','--manifest','a','--manifest','b'],['apply','--winner-overrides','a']]) assert.throws(()=>parseArgs(args))
 })
+
+test('metadata backfill extracts optional provider artwork without depending on it for titles', async () => {
+  const { extractMetadata, fetchMetadata } = require('../scripts/review-web/backfill-titles')
+  assert.deepEqual(extractMetadata('movie', '123', { id: 123, title: 'Film', poster_path: '/poster.jpg' }), { title: 'Film', imageUrl: 'https://image.tmdb.org/t/p/w500/poster.jpg' })
+  assert.deepEqual(extractMetadata('series', '123', { id: 123, name: 'Show', poster_path: null }), { title: 'Show', imageUrl: null })
+  assert.equal(extractMetadata('game', '123', [{ id: 123, name: 'Game', cover: { url: '//images.igdb.com/igdb/image/upload/t_thumb/art.jpg' } }]).imageUrl, 'https://images.igdb.com/igdb/image/upload/t_cover_big/art.jpg')
+  assert.equal(extractMetadata('music', 'abc', { id: 'abc', name: 'Album', images: [{ url: 'https://i.scdn.co/image/album' }] }).imageUrl, 'https://i.scdn.co/image/album')
+  assert.equal(extractMetadata('music', 'abc', { id: 'abc', name: 'Album', images: [{ url: 'javascript:alert(1)' }] }).imageUrl, null)
+  const oldToken = process.env.IGDB_ACCESS_TOKEN, oldId = process.env.IGDB_CLIENT_ID
+  process.env.IGDB_ACCESS_TOKEN = 'fixture'
+  process.env.IGDB_CLIENT_ID = 'fixture'
+  try {
+    const result = await fetchMetadata('game', '123', async (_, options) => {
+      assert.match(options.body, /fields name, cover.url;/)
+      return { ok: true, json: async () => [{ id: 123, name: 'Game' }] }
+    })
+    assert.deepEqual(result, { title: 'Game', imageUrl: null })
+  } finally {
+    if (oldToken === undefined) delete process.env.IGDB_ACCESS_TOKEN; else process.env.IGDB_ACCESS_TOKEN = oldToken
+    if (oldId === undefined) delete process.env.IGDB_CLIENT_ID; else process.env.IGDB_CLIENT_ID = oldId
+  }
+})

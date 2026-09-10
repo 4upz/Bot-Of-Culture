@@ -74,6 +74,7 @@ test(
           mediaId: 'same',
           title: 'Movie [A]',
           normalizedTitle: 'movie [a]',
+          imageUrl: 'https://image.tmdb.org/t/p/w500/art.jpg',
           fetchedAt: date,
         },
         {
@@ -112,6 +113,11 @@ test(
       )
       assert.equal(movie.averageScore, 3.5)
       assert.equal(movie.visibleReviewCount, 4)
+      assert.equal(
+        movie.media.imageUrl,
+        'https://image.tmdb.org/t/p/w500/art.jpg',
+      )
+      assert.equal(movie.reviews[0].media.imageUrl, movie.media.imageUrl)
       assert.equal(movie.latestReviewCreatedAt, date.toISOString())
       assert.equal(movie.reviews[0].reviewedInAnotherServer, true)
       assert.equal(all.items.at(-1).type, 'movie') // tied older rows: game sorts before movie
@@ -135,6 +141,7 @@ test(
       )
       assert.equal(literal.items[0].reviews.length, 3)
       assert.equal(expansion.items.length, 1)
+      assert.equal(expansion.items[0].media.imageUrl, movie.media.imageUrl)
       let page = await service.read('profile', '1', { limit: '1' })
       const ids = []
       const initialCursor = page.nextCursor
@@ -420,6 +427,58 @@ test(
     } finally {
       await prisma.$disconnect()
       await db.dropDatabase()
+      await mongo.close()
+    }
+  },
+)
+
+test(
+  'on-demand artwork persists in MongoDB and preserves existing title text and cursor dates',
+  { skip: !url },
+  async () => {
+    const { PublicArtworkService } = require('../src/web/artwork')
+    const mongo = await MongoClient.connect(url)
+    const db = mongo.db()
+    const prisma = new PrismaClient({ datasources: { db: { url } } })
+    let calls = 0
+    const artwork = new PublicArtworkService(prisma, async () => {
+      calls++
+      return {
+        title: 'Provider name',
+        imageUrl: 'https://image.tmdb.org/t/p/w500/art.jpg',
+      }
+    })
+    try {
+      const old = new Date('2020-01-01')
+      await db
+        .collection('MediaTitle')
+        .createIndex({ type: 1, mediaId: 1 }, { unique: true })
+      await db.collection('MediaTitle').insertOne({
+        type: 'movie',
+        mediaId: '42',
+        title: 'Saved title',
+        normalizedTitle: 'saved title',
+        fetchedAt: old,
+      })
+      const ticket = new URL(
+        artwork.url('movie', '42'),
+        'https://example.com',
+      ).searchParams.get('ticket')
+      assert.equal(
+        await artwork.get('movie', '42', ticket),
+        'https://image.tmdb.org/t/p/w500/art.jpg',
+      )
+      const stored = await db
+        .collection('MediaTitle')
+        .findOne({ type: 'movie', mediaId: '42' })
+      assert.equal(stored.title, 'Saved title')
+      assert.equal(stored.fetchedAt.toISOString(), old.toISOString())
+      assert.equal(stored.imageUrl, 'https://image.tmdb.org/t/p/w500/art.jpg')
+      assert.equal(calls, 1)
+    } finally {
+      artwork.close()
+      await db.dropDatabase()
+      await prisma.$disconnect()
       await mongo.close()
     }
   },

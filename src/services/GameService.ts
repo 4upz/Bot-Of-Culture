@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import Service from './Service'
 import needle from 'needle'
 import { GameSearchResult, SearchResult } from '../utils/types'
+import { providerJson } from './artwork'
 
 dotenv.config()
 
@@ -19,21 +20,27 @@ export default class GameService extends Service {
     this.clientSecret = clientSecret
   }
 
-  async initAuthToken() {
+  getArtwork(id: string, signal: AbortSignal) {
+    return this.readArtwork('game', id, signal, (s) => this.initAuthToken(s))
+  }
+
+  async initAuthToken(signal?: AbortSignal) {
     const authData = {
       client_id: this.clientId,
       client_secret: this.clientSecret,
       grant_type: 'client_credentials',
     }
-    const response = await needle(
-      'post',
-      'https://id.twitch.tv/oauth2/token',
-      authData,
-    ).catch((error) => {
+    const response = await providerJson('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      body: new URLSearchParams(authData),
+      signal,
+    }).catch((error) => {
       console.log('Cannot authorize via Twitch. Something went wrong.')
       throw error
     })
-    this.setAuthHeader(response.body.access_token, this.clientId)
+    if (typeof response.access_token !== 'string' || !response.access_token)
+      throw Error('Twitch authorization token missing')
+    this.setAuthHeader(response.access_token, this.clientId)
   }
 
   async search(query: string): Promise<SearchResult[]> {

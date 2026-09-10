@@ -1,5 +1,5 @@
 import { ReviewType } from '../utils/types'
-import { normalizeTitle } from '../web/query'
+import { normalizeTitle, publicImageUrl } from '../web/query'
 
 const contentFields = ['score', 'comment', 'hoursPlayed', 'replayability', 'sharedFromUserId', 'sharedFromUsername', 'sharedFromComment', 'isQuote']
 
@@ -83,17 +83,22 @@ export async function redactDiscordSources(reviews: any[], collection: any, type
   return reviews.map((review) => !review.sharedFromUserId || visible.has(JSON.stringify([review.sharedFromUserId, review[field]])) ? review : withoutSource(review))
 }
 
-/** Reuse already fetched provider names; enrichment must not undo a saved review. */
-export async function rememberMediaTitle(db: any, type: ReviewType, mediaId: string, target: { title?: string }) {
+/** Reuse already fetched provider metadata; enrichment must not undo a saved review. */
+export async function rememberMediaTitle(db: any, type: ReviewType, mediaId: string, target: { title?: string; image?: string }) {
   if (!target?.title) return
   try {
     const title = target.title.trim()
     if (!title) return
     const normalizedTitle = normalizeTitle(title)
     const existing = await db.mediaTitle.findUnique({ where: { type_mediaId: { type, mediaId } } })
-    if (existing?.title === title && existing?.normalizedTitle === normalizedTitle) return
-    const data = { title, normalizedTitle, fetchedAt: new Date() }
-    await db.mediaTitle.upsert({ where: { type_mediaId: { type, mediaId } }, create: { type, mediaId, ...data }, update: data })
+    const imageUrl = publicImageUrl(target.image)
+    const titleChanged = existing?.title !== title || existing?.normalizedTitle !== normalizedTitle
+    if (!titleChanged && (!imageUrl || existing?.imageUrl === imageUrl)) return
+    const update = {
+      ...(titleChanged ? { title, normalizedTitle, fetchedAt: new Date() } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+    }
+    await db.mediaTitle.upsert({ where: { type_mediaId: { type, mediaId } }, create: { type, mediaId, title, normalizedTitle, fetchedAt: new Date(), ...(imageUrl ? { imageUrl } : {}) }, update })
   } catch {
     console.warn('[Review title] Could not save provider title; review remains saved.')
   }
