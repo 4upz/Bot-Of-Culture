@@ -5,6 +5,7 @@ import { BotClient } from '../Bot'
 import { MembershipService, WebRevision } from './membership'
 import { PublicReviewService } from './service'
 import { HttpError, MediaType } from './query'
+import { PublicArtworkService } from './artwork'
 export interface WebAppOptions {
   trustedProxyIps?: string[]
 }
@@ -58,8 +59,14 @@ export function createWebApp(
     next()
   })
   const service = new PublicReviewService(bot, membership, revision)
+  const artwork = new PublicArtworkService(bot.db, (type, id, signal) => {
+    if (type === 'game') return bot.games.getArtwork(id, signal)
+    if (type === 'music') return bot.music.getArtwork(id, signal)
+    return bot.movies.getArtwork(id, signal, type)
+  })
   const buckets = new Map<string, { start: number; count: number }>()
   let active = 0
+  let activeArtwork = 0
   const pruneBuckets = () => {
     const cutoff = Date.now() - 60000
     for (const [ip, b] of buckets) if (b.start <= cutoff) buckets.delete(ip)
@@ -110,6 +117,11 @@ export function createWebApp(
             503,
             'Reviews temporarily unavailable. Try again shortly.',
           )
+        // Only successful, privacy-filtered pages can authorize a provider lookup.
+        for (const item of result.items || []) {
+          if (item.media && !item.media.imageUrl)
+            item.media.artworkUrl = artwork.url(item.type, item.mediaId)
+        }
         if (!res.destroyed) res.json(result)
       } catch (error) {
         if (res.destroyed) return
@@ -131,6 +143,35 @@ export function createWebApp(
   app.get('/api/v1/users/:id/reviews', route('profile'))
   app.get('/api/v1/guilds/:id/titles', route('guild'))
   app.get('/api/v1/guilds/:id/titles/:type/:mediaId/reviews', route('title'))
+  app.get('/api/v1/artwork/:type/:mediaId', async (req, res) => {
+    if (activeArtwork >= 32) {
+      res.sendStatus(503)
+      return
+    }
+    activeArtwork++
+    // Image work has separate admission so slow artwork cannot occupy review slots.
+    const timer = setTimeout(() => {
+      if (!res.destroyed && !res.headersSent) res.sendStatus(503)
+    }, 15000)
+    timer.unref()
+    try {
+      const url = await artwork.get(
+        req.params.type as MediaType,
+        req.params.mediaId,
+        req.query.ticket,
+      )
+      if (!res.destroyed && !res.headersSent) {
+        if (url) res.redirect(302, url)
+        else res.sendStatus(404)
+      }
+    } catch (error) {
+      if (!res.destroyed && !res.headersSent)
+        res.sendStatus(error instanceof HttpError ? error.status : 503)
+    } finally {
+      clearTimeout(timer)
+      activeArtwork--
+    }
+  })
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }))
   const assets = resolve(__dirname, '../../src/web/public')
   app.use(
@@ -157,5 +198,11 @@ export function createWebApp(
         .send(error.status === 404 ? 'Not found' : 'Request unavailable')
     },
   )
-  return { app, close: () => clearInterval(cleanup) }
+  return {
+    app,
+    close: () => {
+      clearInterval(cleanup)
+      artwork.close()
+    },
+  }
 }

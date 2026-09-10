@@ -111,3 +111,55 @@ test('batched eligibility filters each collection before lookups and omits sourc
     assert.ok(!pipeline.some((stage) => stage.$lookup?.from === 'MediaTitle'))
   }
 })
+
+test('public responses include cached Discord avatars and never fetch missing users', async () => {
+  const row = {
+    _id: 'a',
+    type: 'movie',
+    mediaId: '42',
+    userId: '1',
+    username: 'Reviewer',
+    score: 4,
+    _createdAt: new Date(),
+    media: {
+      title: 'Film',
+      imageUrl: 'https://image.tmdb.org/t/p/w500/art.jpg',
+    },
+  }
+  const model = {
+    aggregateRaw: async ({ pipeline }) =>
+      pipeline.some((s) => s.$sort?._createdAt) ? [row] : [],
+  }
+  const { Client, GatewayIntentBits, User } = require('discord.js')
+  const bot = new Client({ intents: [GatewayIntentBits.Guilds] })
+  bot.db = { reviewPreference: model, movieReview: model }
+  bot.users.fetch = () => {
+    throw new Error('Public reads must not fetch Discord users')
+  }
+  bot.users.cache.set(
+    '1',
+    new User(bot, {
+      id: '1',
+      username: 'Reviewer',
+      discriminator: '0',
+      avatar: 'abc',
+    }),
+  )
+  const service = new PublicReviewService(bot, roster, { value: 0 })
+  const result = await service.read('profile', '1', {})
+  assert.equal(
+    result.items[0].avatarUrl,
+    'https://cdn.discordapp.com/avatars/1/abc.webp?size=128',
+  )
+  assert.equal(result.profile.avatarUrl, result.items[0].avatarUrl)
+  assert.equal(
+    result.items[0].media.imageUrl,
+    'https://image.tmdb.org/t/p/w500/art.jpg',
+  )
+  bot.users.cache.clear()
+  assert.equal(
+    (await service.read('profile', '1', {})).items[0].avatarUrl,
+    null,
+  )
+  bot.destroy()
+})

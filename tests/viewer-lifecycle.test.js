@@ -17,6 +17,7 @@ function fixture(pathname = '/u/123') {
       value: '',
       dataset: {},
       children: [],
+      attributes: {},
       replaceChildren() {
         this.innerHTML = ''
         this.children = []
@@ -24,7 +25,9 @@ function fixture(pathname = '/u/123') {
       append(x) {
         this.children.push(x)
       },
-      setAttribute() {},
+      setAttribute(name, value) {
+        this.attributes[name] = value
+      },
     }
   }
   const filters = ['all', 'movie', 'series', 'game', 'music'].map((type) => ({
@@ -166,7 +169,7 @@ test('focus/interval clear previous reviews immediately and unavailable response
   const f = fixture()
   await f.reply(0, [review('private later')])
   f.events.focus()
-  assert.equal(f.nodes.get('results').innerHTML, '')
+  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
   assert.equal(f.nodes.get('name').textContent, 'Review profile')
   await f.reply(1, [], null, 404)
   assert.doesNotMatch(f.nodes.get('results').innerHTML, /private later/)
@@ -185,7 +188,7 @@ test('409 resets instead of merging incompatible pages', async () => {
   await f.reply(1, [], null, 409)
   assert.equal(f.requests.length, 3)
   assert.doesNotMatch(f.requests[2].url, /cursor=/)
-  assert.equal(f.nodes.get('results').innerHTML, '')
+  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
   await f.reply(2, [review('fresh')])
   assert.doesNotMatch(f.nodes.get('results').innerHTML, /<h2>old/)
 })
@@ -239,4 +242,106 @@ test('server origin is inside author row before comment, never profile footer', 
     'utf8',
   )
   assert.match(css, /\.review-metadata\s*\{[^}]*margin-top:\s*24px/)
+})
+
+test('initial load, filters and search debounce show skeletons until results arrive', async () => {
+  const f = fixture()
+  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
+  assert.equal(f.nodes.get('results').attributes['aria-busy'], 'true')
+  await f.reply(0, [review('first')])
+  assert.doesNotMatch(f.nodes.get('results').innerHTML, /skeleton/)
+  assert.equal(f.nodes.get('results').attributes['aria-busy'], 'false')
+  f.filters[3].onclick()
+  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
+  assert.equal(f.nodes.get('name').textContent, 'Maya')
+  await f.reply(1)
+  assert.match(f.nodes.get('results').innerHTML, /No public reviews/)
+  f.nodes.get('search').value = 'film'
+  f.nodes.get('search').oninput()
+  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
+  assert.doesNotMatch(f.nodes.get('results').innerHTML, /No public reviews/)
+})
+
+test('failed initial loading removes skeletons and exposes retry', async () => {
+  const f = fixture()
+  await f.reply(0, [], null, 500)
+  assert.doesNotMatch(f.nodes.get('results').innerHTML, /skeleton/)
+  assert.equal(f.nodes.get('name').className, '')
+  assert.equal(f.nodes.get('results').attributes['aria-busy'], 'false')
+  f.nodes.get('sentinel').children.at(-1).onclick()
+  assert.match(f.nodes.get('results').innerHTML, /skeleton/)
+})
+
+test('cosigns and quotes have explicit attribution without an empty quote or copied playtime', async () => {
+  const f = fixture()
+  await f.reply(0, [
+    {
+      ...review('cosign'),
+      shareType: 'cosign',
+      comment: '',
+      sharedFromUsername: 'Dulaney',
+      sharedFromUserId: '456',
+      hoursPlayed: 11,
+    },
+    {
+      ...review('quote'),
+      shareType: 'quote',
+      sharedFromUsername: 'Dulaney',
+      sharedFromUserId: '456',
+      sharedFromComment: 'Original words',
+    },
+  ])
+  const html = f.nodes.get('results').innerHTML
+  assert.match(html, /Cosigned .*Dulaney/)
+  assert.match(html, /Quoted .*Dulaney/)
+  assert.match(html, /href="\/u\/456"/)
+  assert.match(html, /Original words/)
+  assert.equal((html.match(/<blockquote/g) || []).length, 1)
+  assert.doesNotMatch(html, /11h played/)
+})
+
+test('unavailable cosign sources remain labeled without fabricating attribution', async () => {
+  const f = fixture()
+  await f.reply(0, [
+    {
+      ...review('cosign'),
+      comment: '',
+      shareType: 'cosign',
+      sourceUnavailable: true,
+    },
+  ])
+  const html = f.nodes.get('results').innerHTML
+  assert.match(html, /Cosigned a review/)
+  assert.match(html, /Source review unavailable/)
+  assert.doesNotMatch(html, /<blockquote/)
+})
+
+test('server reviews render artwork and avatars with initials fallback', async () => {
+  const f = fixture('/g/123')
+  const r = {
+    ...review('film'),
+    avatarUrl: 'https://cdn.discordapp.com/avatars/123/abc.webp',
+  }
+  await f.reply(0, [
+    {
+      type: 'movie',
+      mediaId: 'film',
+      media: {
+        title: 'Film',
+        imageUrl: 'https://image.tmdb.org/t/p/w500/art.jpg',
+      },
+      averageScore: 4,
+      visibleReviewCount: 1,
+      reviews: [r],
+    },
+  ])
+  const html = f.nodes.get('results').innerHTML
+  assert.match(
+    html,
+    /src="https:\/\/cdn.discordapp.com\/avatars\/123\/abc.webp"/,
+  )
+  assert.match(html, /src="https:\/\/image.tmdb.org\/t\/p\/w500\/art.jpg"/)
+  assert.match(html, /MA<\/span>/)
+  assert.match(html, /loading="lazy"/)
+  assert.doesNotMatch(html, /onerror=/)
 })

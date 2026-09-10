@@ -131,6 +131,7 @@ model MediaTitle {
   mediaId String
   title String
   normalizedTitle String
+  imageUrl String?
   fetchedAt DateTime
   @@unique([type, mediaId])
 }

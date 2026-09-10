@@ -146,3 +146,13 @@ test('an original review clears the attribution left by an earlier co-sign', asy
   assert.equal(f.row().isPrivate, true)
   assert.ok(f.row().updatedAt instanceof Date)
 })
+
+test('artwork enriches an existing title without changing search generation or losing a known image', async () => {
+  let row = { title: 'Film', normalizedTitle: 'film', fetchedAt: new Date('2020-01-01') }
+  const db = { mediaTitle: { async findUnique() { return row }, async upsert({ update }) { row = { ...row, ...update } } } }
+  await rememberMediaTitle(db, 'movie', '42', { title: 'Film', image: 'https://image.tmdb.org/t/p/w500/art.jpg' })
+  assert.equal(row.imageUrl, 'https://image.tmdb.org/t/p/w500/art.jpg')
+  assert.equal(row.fetchedAt.toISOString(), '2020-01-01T00:00:00.000Z')
+  await rememberMediaTitle(db, 'movie', '42', { title: 'Film', image: '' })
+  assert.equal(row.imageUrl, 'https://image.tmdb.org/t/p/w500/art.jpg')
+})

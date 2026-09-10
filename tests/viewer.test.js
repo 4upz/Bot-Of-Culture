@@ -113,3 +113,45 @@ test('nested same-character emphasis and bare web links render safely', () => {
 })
 test('stars work under a strict CSP without inline style', () =>
   assert.ok(!stars(3.5, 2).includes('style=')))
+
+test('review images reject unsafe protocols and escape accessible labels', () => {
+  const { avatar, artwork } = require('../src/web/public/viewer-core')
+  assert.doesNotMatch(avatar('Maya', 'javascript:alert(1)'), /<img/)
+  assert.doesNotMatch(
+    avatar('Maya', 'https://name:password@example.com/x'),
+    /<img/,
+  )
+  assert.equal(
+    artwork({ title: 'Film', imageUrl: 'http://example.com/x' }, 'movie'),
+    '',
+  )
+  assert.match(
+    artwork(
+      { title: '"><script>', imageUrl: 'https://example.com/a' },
+      'movie',
+    ),
+    /alt="&quot;&gt;&lt;script&gt; artwork"/,
+  )
+})
+
+test('missing artwork uses only a signed same-origin image lookup, loaded lazily', () => {
+  const { artwork } = require('../src/web/public/viewer-core')
+  const lookupUrl = '/api/v1/artwork/movie/42?ticket=123.abc'
+  const html = artwork(
+    { title: 'Film', imageUrl: null, artworkUrl: lookupUrl },
+    'movie',
+  )
+  assert.match(html, /src="\/api\/v1\/artwork\/movie\/42\?ticket=123.abc"/)
+  assert.match(html, /loading="lazy"/)
+  assert.equal(artwork({ artworkUrl: '//evil.example/image' }, 'movie'), '')
+  assert.equal(
+    artwork(
+      {
+        artworkUrl:
+          '/api/v1/artwork/movie/42?ticket=123.abc&url=https://evil.example',
+      },
+      'movie',
+    ),
+    '',
+  )
+})

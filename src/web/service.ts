@@ -9,6 +9,7 @@ import {
   parseQuery,
   rawDate,
   rawId,
+  serializeMedia,
   serializeReview,
   types,
   unionPipeline,
@@ -220,7 +221,7 @@ export class PublicReviewService {
         items.push({
           type: row.type,
           mediaId: row.mediaId,
-          media: { title: row.media?.title || 'Title unavailable' },
+          media: serializeMedia(row.media),
           latestReviewCreatedAt: rawDate(row.latestReviewCreatedAt),
           averageScore: row.averageScore,
           visibleReviewCount: row.visibleReviewCount,
@@ -290,7 +291,11 @@ export class PublicReviewService {
       }
     else {
       if (!identity) throw new HttpError(404, 'Review profile unavailable')
-      result.profile = { userId: id, username: identity.username }
+      result.profile = {
+        userId: id,
+        username: identity.username,
+        avatarUrl: this.avatarUrl(id),
+      }
     }
     return result
   }
@@ -417,6 +422,17 @@ export class PublicReviewService {
     for (const row of rows)
       if (row.sharedFromUserId)
         row._sourceAllowed = allowed.has(sourceKey(row, row.sharedFromUserId))
-    return rows.map((row) => serializeReview(row, guildId))
+    return rows.map((row) => ({
+      ...serializeReview(row, guildId),
+      avatarUrl: this.avatarUrl(row.userId),
+    }))
+  }
+  private avatarUrl(userId: string): string | null {
+    // Membership sync populates Discord's user cache. Never add REST work to public reads.
+    return (
+      this.bot.users?.cache
+        .get(userId)
+        ?.displayAvatarURL({ size: 128, extension: 'webp' }) || null
+    )
   }
 }

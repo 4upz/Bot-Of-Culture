@@ -173,7 +173,7 @@ export function mediaLookupPipeline(type?: MediaType): any[] {
               },
             },
           },
-          { $project: { _id: 0, title: 1, normalizedTitle: 1 } },
+          { $project: { _id: 0, title: 1, normalizedTitle: 1, imageUrl: 1 } },
         ],
         as: '_titles',
       },
@@ -212,12 +212,29 @@ export function rawDate(v: any): string {
 export function rawId(v: any): string {
   return typeof v === 'string' ? v : v?.$oid || String(v)
 }
+export function publicImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 2048) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password
+      ? url.href
+      : null
+  } catch {
+    return null
+  }
+}
+export function serializeMedia(media: any) {
+  return {
+    title: media?.title || 'Title unavailable',
+    imageUrl: publicImageUrl(media?.imageUrl),
+  }
+}
 export function serializeReview(row: any, guildId?: string): any {
   const result: any = {
     id: rawId(row._id),
     type: row.type,
     mediaId: row.mediaId,
-    media: { title: row.media?.title || 'Title unavailable' },
+    media: serializeMedia(row.media),
     userId: row.userId,
     username: row.username,
     score: row.score,
@@ -233,6 +250,7 @@ export function serializeReview(row: any, guildId?: string): any {
   if (row.hoursPlayed != null) result.hoursPlayed = row.hoursPlayed
   if (row.replayability) result.replayability = row.replayability
   if (row.sharedFromUserId) {
+    result.shareType = row.isQuote === true ? 'quote' : 'cosign'
     result.sourceUnavailable = true
     if (row._sourceAllowed) {
       result.sharedFromUsername = row.sharedFromUsername

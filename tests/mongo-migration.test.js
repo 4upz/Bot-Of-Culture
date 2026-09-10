@@ -118,8 +118,8 @@ test('real MongoDB title backfill distinct IDs, namespaces, resume and retained 
   await db.collection('MediaTitle').insertOne({ type: 'movie', mediaId: '999', title: 'Retained name', normalizedTitle: 'retained name', fetchedAt: new Date('2020-01-01') })
   // Provider transport is deliberately fixture-only; all title persistence is actual MongoDB.
   const hook = path.join(dir, 'provider-fixture.cjs')
-  await fs.writeFile(hook, `global.fetch = async (url, init) => { const game = url.includes('igdb'); const series = url.includes('/tv/'); const music = url.includes('spotify'); const id = music ? 'abcdefghijklmnopqrstuv' : 123; const body = game ? [{id,name:'Game without cover'}] : {id, title:' Movie   Name ', name:series?'Series Name':'Album without artwork'}; return {ok:true,json:async()=>body} };`)
-  const cli = mode => exec(process.execPath, ['--require', hook, 'scripts/review-web/backfill-titles.js', mode, '--database', name], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, MIGRATION_DATABASE_URL: uri, TMDB_TOKEN: 'fixture', IGDB_CLIENT_ID: 'fixture', IGDB_ACCESS_TOKEN: 'fixture', SPOTIFY_ACCESS_TOKEN: 'fixture' } })
+  await fs.writeFile(hook, `global.fetch = async (url, init) => { const game = url.includes('igdb'); const series = url.includes('/tv/'); const music = url.includes('spotify'); const id = music ? 'abcdefghijklmnopqrstuv' : url.endsWith('/999') ? 999 : 123; const body = game ? [{id,name:'Game without cover'}] : {id, title:' Movie   Name ', name:series?'Series Name':'Album without artwork', poster_path: music ? null : '/fixture.jpg'}; return {ok:true,json:async()=>body} };`)
+  const cli = (mode, extra = []) => exec(process.execPath, ['--require', hook, 'scripts/review-web/backfill-titles.js', mode, '--database', name, ...extra], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, MIGRATION_DATABASE_URL: uri, TMDB_TOKEN: 'fixture', IGDB_CLIENT_ID: 'fixture', IGDB_ACCESS_TOKEN: 'fixture', SPOTIFY_ACCESS_TOKEN: 'fixture' } })
   const dry = JSON.parse((await cli('dryrun')).stdout)
   assert.equal(dry.missing, 4)
   assert.equal(await db.collection('MediaTitle').countDocuments(), 1)
@@ -129,6 +129,16 @@ test('real MongoDB title backfill distinct IDs, namespaces, resume and retained 
   assert.equal((await db.collection('MediaTitle').findOne({ type: 'movie', mediaId: '123' })).normalizedTitle, 'movie name')
   assert.equal((await db.collection('MediaTitle').findOne({ type: 'series', mediaId: '123' })).title, 'Series Name')
   assert.equal((await db.collection('MediaTitle').findOne({ type: 'movie', mediaId: '999' })).title, 'Retained name')
+  assert.equal(JSON.parse((await cli('dryrun', ['--artwork'])).stdout).missing, 3)
+  assert.equal((await db.collection('MediaTitle').findOne({ type: 'movie', mediaId: '999' })).imageUrl, undefined)
+  const art = JSON.parse((await cli('apply', ['--artwork'])).stdout)
+  assert.equal(art.written, 1)
+  assert.equal(art.withoutArtwork, 2)
+  const retained = await db.collection('MediaTitle').findOne({ type: 'movie', mediaId: '999' })
+  assert.equal(retained.title, 'Retained name')
+  assert.equal(retained.fetchedAt.toISOString(), '2020-01-01T00:00:00.000Z')
+  assert.equal(retained.imageUrl, 'https://image.tmdb.org/t/p/w500/fixture.jpg')
+  assert.equal(JSON.parse((await cli('apply', ['--artwork'])).stdout).written, 0)
 })
 
 test('approved older winner overrides fail closed and restore every BSON original', { skip: !uri }, async t => {

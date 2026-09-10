@@ -176,3 +176,33 @@ test('a failed fetch for one guild does not invalidate another guild in flight',
   await pending
   assert.deepEqual(service.get('good').members, ['9'])
 })
+
+test('serialization distinguishes cosigns and quotes even when the source becomes private', () => {
+  const row = {
+    _id: '1',
+    type: 'game',
+    mediaId: '2',
+    userId: '3',
+    username: 'A',
+    score: 5,
+    _createdAt: new Date(),
+    sharedFromUserId: '4',
+    sharedFromUsername: 'B',
+    sharedFromComment: 'source',
+    media: {
+      title: 'Game',
+      imageUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/a.jpg',
+    },
+  }
+  for (const isQuote of [true, false]) {
+    const hidden = serializeReview({ ...row, isQuote })
+    assert.equal(hidden.shareType, isQuote ? 'quote' : 'cosign')
+    assert.equal(hidden.sharedFromUserId, undefined)
+    assert.equal(hidden.sharedFromUsername, undefined)
+    assert.equal(hidden.sharedFromComment, undefined)
+    const visible = serializeReview({ ...row, isQuote, _sourceAllowed: true })
+    assert.equal(visible.shareType, isQuote ? 'quote' : 'cosign')
+    assert.equal(visible.media.imageUrl, row.media.imageUrl)
+    assert.equal(visible.sharedFromComment, isQuote ? 'source' : undefined)
+  }
+})
