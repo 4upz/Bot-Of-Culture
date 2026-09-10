@@ -93,6 +93,23 @@ integration cases. Ordinary `yarn test` safely skips the three Mongo integration
 tests without these variables. See the README for runtime flags and HTTPS/intent
 setup. All production actions require separate authorization.
 
+### Automatic viewer revalidation
+
+Visible pages revalidate every 30 seconds and on return to the tab/window.
+Overlapping triggers share one refresh, with a one-second guard for paired
+visibility/focus events. Revalidation reads through the previously loaded
+creation-time boundary and expanded review pages, then replaces the checked data
+together. Unchanged review cards, loaded images, profile avatars, and text
+selections stay in place; changed content retains the first visible card's
+scroll offset when that card is still present.
+
+The entire refresh has a 10-second deadline, including any wait for an active
+pagination request. Failed or inaccessible revalidation clears the old reviews
+and identity and offers Retry; old content is never retained indefinitely
+through an outage. A stale cursor restarts from a fresh first page. Search,
+filters, and history navigation cancel old work and retain their normal loading
+state. No review bodies are saved in browser storage.
+
 ### Optional artwork warmup
 
 Historical titles acquire artwork automatically when viewed. To populate images ahead of visits, optionally run the existing backfill with `--artwork` using the same database and provider credentials:
