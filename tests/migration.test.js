@@ -67,3 +67,38 @@ test('BSON numeric scores validate without changing archived tags or leaking wra
     assert.throws(() => planCollection('MovieReview', [review('1', '2020-01-01', { score })], options), /Invalid score/)
   }
 })
+
+const { validateWinnerOverrides, assertWinnerOverridesApplied } = require('../scripts/review-web/migration-core')
+const overrideFor = docs => ({ collection: 'MovieReview', userId: docs[0].userId, mediaId: docs[0].movieId, canonicalReviewId: String(docs[0]._id), expectedSources: docs.map(doc => ({ originalReviewId: String(doc._id), sourceChecksum: checksum(doc) })) })
+test('approved exact older winner retains privacy and all beforeimages with BSON rollback', () => {
+  const docs = fixture(), override = overrideFor(docs)
+  const [g] = planCollection('MovieReview', docs, { ...options, winnerOverrides: [override] })
+  assert.equal(g.canonicalReviewId, String(docs[0]._id))
+  assert.equal(g.selectionReason.kind, 'APPROVED_WINNER_OVERRIDE')
+  assert.equal(g.selectionReason.defaultCanonicalReviewId, String(docs[2]._id))
+  assert.equal(g.selectionReason.approvedOverrideChecksum, checksum(override))
+  assert.equal(decode(g.postDocumentEjson).isPrivate, true)
+  assert.equal(g.entries.find(e => e.recordKind === 'CANONICAL_BEFOREIMAGE').originalReviewId, String(docs[0]._id))
+  for (const entry of g.entries) {
+    const current = entry.recordKind === 'CANONICAL_BEFOREIMAGE' ? decode(g.postDocumentEjson) : null
+    assert.equal(transition(current, entry, g, true), 'restore')
+    assert.equal(checksum(decode(entry.originalDocumentEjson)), entry.sourceChecksum)
+  }
+  assertWinnerOverridesApplied([g], [override])
+})
+test('winner overrides reject stale, added, unmatched, singleton and invalid choices', () => {
+  const docs = fixture(), valid = overrideFor(docs)
+  const plan = (records, override = valid) => planCollection('MovieReview', records, {...options, winnerOverrides:[override]})
+  assert.throws(()=>plan(docs.map((d,i)=>i ? d : {...d,comment:'changed'})), /source/i)
+  assert.throws(()=>plan([...docs,review('4','2022-01-01')]), /source/i)
+  assert.throws(()=>plan(docs.slice(1)), /source|winner/i)
+  assert.throws(()=>plan(docs,{...valid,mediaId:'unmatched'}), /unmatched/i)
+  assert.throws(()=>plan([docs[0]],overrideFor([docs[0]])), /duplicate|singleton/i)
+  for(const override of [{...valid,collection:'constructor'},{...valid,canonicalReviewId:'bad'},{...valid,userId:''},{...valid,extra:true},{...valid,expectedSources:[valid.expectedSources[0],valid.expectedSources[0]]},{...valid,expectedSources:valid.expectedSources.map(s=>({...s,sourceChecksum:'bad'}))}]) assert.throws(()=>validateWinnerOverrides([override]))
+  assert.throws(()=>validateWinnerOverrides([valid,valid]), /duplicate/i)
+  assert.throws(()=>assertWinnerOverridesApplied([], [valid]), /unmatched/i)
+})
+test('migration CLI rejects unknown, duplicate, missing and non-dryrun override options',()=>{
+  const {parseArgs}=require('../scripts/review-web/migrate')
+  for(const args of [['dryrun','--prefer-production'],['dryrun','--winner-overrides'],['dryrun','--manifest','a','--manifest','b'],['apply','--winner-overrides','a']]) assert.throws(()=>parseArgs(args))
+})
