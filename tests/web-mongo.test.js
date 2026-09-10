@@ -349,7 +349,8 @@ test(
       }
       calls = 0
       const search = await service.read('guild', '10', { q: 'batch' })
-      assert.equal(calls, 8)
+      // Expansion cursors reuse the preference snapshot captured for search.
+      assert.equal(calls, 7)
       assert.equal(search.items.length, 10)
       const expanded = await service.read(
         'title',

@@ -16,6 +16,27 @@ node scripts/review-web/migrate.js --database restored_fixture --manifest /priva
 
 The report is keyed by migrationBatchId and SHA-256 plan checksum. It includes baseline counts, full source checksums, deterministic canonical selection, every source's production/test/other classification, dates, score, comment and privacy. Newest `_createdAt` wins globally per user and provider ID in each collection; descending ObjectId resolves equal timestamps. An older edited record cannot win because of updatedAt. `testWinnerOverProduction` highlights test content winning over production without silently excluding it. Any explicit private duplicate makes the canonical private. Invalid scores, identity, creation dates or privacy values produce a private BLOCKED manifest containing the first failing record/reason in each affected collection and a nonzero exit status. Blocked plans cannot apply; resolve their errors and create a new audit. No valid partial collection plan is used to bypass a blocked collection.
 
+Approved exceptions can select an older original only through `dryrun --winner-overrides /restricted/winner-overrides.json`. The private JSON file must be an array of exact objects shaped as follows (placeholder checksums must be replaced with the canonical source checksums from the audit):
+
+```json
+[
+  {
+    "collection": "MovieReview",
+    "userId": "123456789012345678",
+    "mediaId": "123",
+    "canonicalReviewId": "000000000000000000000001",
+    "expectedSources": [
+      { "originalReviewId": "000000000000000000000001", "sourceChecksum": "<64 lowercase hex characters>" },
+      { "originalReviewId": "000000000000000000000002", "sourceChecksum": "<64 lowercase hex characters>" }
+    ]
+  }
+]
+```
+
+Each exception binds the collection/user/media identity, selected original ID, and the IDs plus full BSON checksums of **every** original in that duplicate group. Unknown fields/collections, malformed IDs/checksums, duplicate entries, singleton groups, unmatched choices, and added, missing or changed sources block planning. Every supplied exception must match exactly one planned group across all collections. All other groups retain newest-created/ObjectId selection; no blanket production preference exists. The manifest embeds the approved exception list inside its checksum, and each group records its selection reason, default winner, and approved-exception checksum. The selected original receives the canonical-beforeimage archive role even when it is older. Privacy OR and archival of every original remain unchanged.
+
+Apply/verify/rollback use that same reviewed manifest, without another override flag. For an overridden group, apply also rejects additional IDs introduced since audit before modifying that group's sources. Existing per-document checksum checks reject edited sources; already deleted duplicates are accepted only when their same-batch archive entry is already `APPLIED`, read inside the same source transaction. A newly `ARCHIVED` entry cannot turn an independently deleted original into a resumable migration. Keep all writers paused, as required for every migration. Store the exception file beside the private audit with mode `0600`; never commit real source checksums or identities.
+
 Inspect all conflicts and test-server winners before applying. A newly generated final audit should follow stopping/draining every review writer. Manifest files are never silently overwritten by another dry run.
 
 ## Apply, resume and verify
