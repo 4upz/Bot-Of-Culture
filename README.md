@@ -151,8 +151,11 @@ set it to `true` only with `PUBLIC_WEB_BASE_URL` configured and Discord's **Serv
 Members Intent** enabled for the bot. The code requests that privileged intent
 only while the viewer is enabled. No Message Content intent is needed.
 
-Public routes are `/u/:discordUserId` and `/g/:guildId`. Discord `/reviews profile`,
-`/reviews server`, and `/reviews visibility` provide links and a global web opt-out.
+Public routes are `/u/:discordUserId` and `/g/:guildId`. Discord `/review-page profile`,
+`/review-page server`, and `/review-page visibility` provide links and a global web opt-out.
+After updating the bot, refresh the registered Discord commands with
+`yarn deploy-commands` for your configured guild or `yarn deploy-commands:global`
+for global commands so `/review-page` replaces the previous `/reviews` command.
 Reviews remain authored in Discord. Anonymous responses are never cached and
 search engines are instructed not to index them. Guild pages fail closed during
 incomplete, disconnected, or stale membership synchronization. A single bot/web

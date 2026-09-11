@@ -15,7 +15,7 @@
     $('name').textContent = 'Reviews'
     $('name').className = ''
     $('results').innerHTML =
-      '<p class="empty">Open a review profile or server library link from Discord using <code>/reviews profile</code> or <code>/reviews server</code>.</p>'
+      '<p class="empty">Open a review profile or server library link from Discord using <code>/review-page profile</code> or <code>/review-page server</code>.</p>'
     $('search').disabled = true
     return
   }
