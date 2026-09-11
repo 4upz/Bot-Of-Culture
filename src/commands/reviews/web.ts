@@ -4,11 +4,11 @@ import { getWebVisibility, publicReviewUrl, setWebVisibility } from '../../revie
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('reviews')
-    .setDescription('Open review pages or control your public web visibility')
-    .addSubcommand((sub) => sub.setName('profile').setDescription('Open a global review profile')
+    .setName('review-page')
+    .setDescription('Open a profile or server review page, or manage your web visibility')
+    .addSubcommand((sub) => sub.setName('profile').setDescription('Get a link to a reviewer’s public review page')
       .addUserOption((option) => option.setName('reviewer').setDescription('Reviewer (defaults to you)')))
-    .addSubcommand((sub) => sub.setName('server').setDescription('Open this server’s current-member review library'))
+    .addSubcommand((sub) => sub.setName('server').setDescription('Get a link to this server’s review page for current members'))
     .addSubcommand((sub) => sub.setName('visibility').setDescription('View or change your global web visibility')
       .addStringOption((option) => option.setName('state').setDescription('Public or hidden on all web review pages')
         .addChoices({ name: 'Public', value: 'public' }, { name: 'Hidden', value: 'hidden' }))),
@@ -37,7 +37,7 @@ export default {
       }
       const id = command === 'server' ? interaction.guildId : (interaction.options.getUser('reviewer') ?? interaction.user).id
       const url = publicReviewUrl(command === 'server' ? 'guild' : 'user', id)
-      await interaction.editReply(url ? `[Open ${command === 'server' ? 'server library' : 'review profile'}](${url})` : 'Web review pages are not enabled yet. You can still manage /reviews visibility.')
+      await interaction.editReply(url ? `[Open ${command === 'server' ? 'server library' : 'review profile'}](${url})` : 'Web review pages are not enabled yet. You can still manage /review-page visibility.')
     } catch {
       await interaction.editReply('Review pages or visibility settings are temporarily unavailable. Please try again shortly.')
     }
